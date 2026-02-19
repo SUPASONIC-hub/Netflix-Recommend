@@ -1,0 +1,20 @@
+{
+  "contents": [
+    {
+      "id": "1770973167494",
+      "tmdbId": "1290159",
+      "title": "하우스 오브 다이너마이트",
+      "posterUrl": "https://image.tmdb.org/t/p/w500/vZg0kV8hyhArVT5OR821WHJX94O.jpg",
+      "year": "2025",
+      "type": "movie",
+      "myNote": "재밌음",
+      "myRating": 4.5,
+      "tags": [
+        "캐서린 비글로우"
+      ],
+      "createdAt": "2026-02-13T08:59:27.494Z",
+      "updatedAt": "2026-02-13T08:59:27.494Z"
+    }
+  ],
+  "comments": []
+}

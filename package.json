@@ -1,0 +1,30 @@
+{
+  "name": "netflix-recommend",
+  "version": "1.0.0",
+  "description": "나만의 넷플릭스 감상 & 별점 + 네이버 콘텐츠 검색 기반 추천 서비스",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js"
+  },
+  "keywords": [
+    "netflix",
+    "recommendation",
+    "node",
+    "express"
+  ],
+  "author": "",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.13.5",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.3.1",
+    "ejs": "^4.0.1",
+    "express": "^5.2.1",
+    "lowdb": "^7.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
+}
