@@ -22,6 +22,12 @@
       .navbar-brand {
         font-weight: 700;
       }
+      .detail-body-text {
+        font-size: 1.1rem;
+        line-height: 1.7;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
     </style>
   </head>
   <body>
@@ -33,22 +39,77 @@
 
     <div class="container">
       <div class="row mb-4">
+        <% const backdropSrc = content.backdropPath ? 'https://image.tmdb.org/t/p/w780' + content.backdropPath : (content.posterPath ? 'https://image.tmdb.org/t/p/w780' + content.posterPath : (content.posterUrl || '')); %>
+        <% if (backdropSrc) { %>
+        <div class="col-12 mb-3">
+          <div class="rounded" style="background-image: url('<%= backdropSrc %>'); background-size: cover; background-position: center; padding: 20px; min-height: 220px;">
+            <div class="bg-dark bg-opacity-50 text-white p-3 rounded">
+              <h2 class="mb-0"><%= content.title || content.name || '' %></h2>
+            </div>
+          </div>
+        </div>
+        <% } %>
         <div class="col-md-4">
-          <% if (content.posterUrl) { %>
+          <% const posterSrc = content.posterUrl || (content.posterPath ? 'https://image.tmdb.org/t/p/w500' + content.posterPath : ''); %>
+          <% if (posterSrc) { %>
           <img
-            src="<%= content.posterUrl %>"
+            src="<%= posterSrc %>"
             class="img-fluid rounded"
-            alt="<%= content.title %>"
+            alt="<%= content.title || content.name || '' %>"
           />
           <% } %>
         </div>
         <div class="col-md-8">
-          <h1><%= content.title %></h1>
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            <h1 class="mb-0"><%= content.title || content.name || '' %></h1>
+            <% if (isAdmin) { %>
+            <a href="/admin/content/<%= content.id %>/edit" class="btn btn-sm btn-outline-secondary">수정</a>
+            <form
+              method="post"
+              action="/admin/content/<%= content.id %>/delete"
+              onsubmit="return confirm('이 추천을 삭제할까요?');"
+              class="d-inline"
+            >
+              <button type="submit" class="btn btn-sm btn-outline-danger">삭제</button>
+            </form>
+            <% } %>
+          </div>
           <p class="text-muted">
             <%= content.year || content.pubDate || '' %> · <%= content.type || '콘텐츠' %>
           </p>
-          <p>⭐ <%= content.myRating %> / 5</p>
-          <p><%= content.myNote %></p>
+          <p>SUPASONIC의 평점 <%= content.myRating %> / 5</p>
+          <p class="detail-body-text"><%= content.myNote %></p>
+          <% if (content.overview) { %>
+          <p class="detail-body-text"><%= content.overview %></p>
+          <% } %>
+          <ul class="list-unstyled">
+            <% if (content.releaseDate || content.firstAirDate) { %>
+            <li>
+              <strong>공개일시:</strong>
+              <%= content.releaseDate || content.firstAirDate %>
+            </li>
+            <% } %>
+            <% if (typeof content.popularity === 'number') { %>
+            <li><strong>인기지표:</strong> <%= content.popularity %></li>
+            <% } %>
+            <% if (typeof content.voteAverage === 'number') { %>
+            <li><strong>TMDB 평점:</strong> <%= content.voteAverage %></li>
+            <% } %>
+            <% if (typeof content.voteCount === 'number') { %>
+            <li><strong>TMDB 투표 수:</strong> <%= content.voteCount %></li>
+            <% } %>
+            <% if (typeof content.adult === 'boolean') { %>
+            <li><strong>성인물 여부:</strong> <%= content.adult ? '예' : '아니오' %></li>
+            <% } %>
+            <% if (content.mediaType) { %>
+            <li><strong>멀티검색결과 타입:</strong> <%= content.mediaType %></li>
+            <% } %>
+            <% if (Array.isArray(content.genreNames) && content.genreNames.length) { %>
+            <li><strong>장르:</strong> <%= content.genreNames.join(', ') %></li>
+            <% } else if (Array.isArray(content.genreIds) && content.genreIds.length) { %>
+            <li><strong>장르:</strong> <%= content.genreIds.join(', ') %></li>
+            <% } %>
+          </ul>
           <% if (content.tags && content.tags.length) { %>
           <p>
             태그:
@@ -65,7 +126,7 @@
       <div class="mb-4">
         <h3>댓글</h3>
         <% if (!comments || comments.length === 0) { %>
-        <p>아직 댓글이 없습니다. 첫 댓글을 남겨보세요!</p>
+        <p>아직 댓글이 없습니다. 첫 댓글을 남겨보세요.</p>
         <% } else { %>
         <ul class="list-group">
           <% comments.forEach(function (cm) { %>
@@ -97,5 +158,4 @@
       </div>
     </div>
   </body>
-  </html>
-
+</html>

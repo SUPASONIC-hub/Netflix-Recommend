@@ -7,13 +7,56 @@
       "posterUrl": "https://image.tmdb.org/t/p/w500/vZg0kV8hyhArVT5OR821WHJX94O.jpg",
       "year": "2025",
       "type": "movie",
-      "myNote": "재밌음",
+      "myNote": "볼만했어요.",
       "myRating": 4.5,
       "tags": [
         "캐서린 비글로우"
       ],
       "createdAt": "2026-02-13T08:59:27.494Z",
-      "updatedAt": "2026-02-13T08:59:27.494Z"
+      "updatedAt": "2026-02-19T05:40:12.313Z",
+      "name": "",
+      "overview": "",
+      "releaseDate": "",
+      "firstAirDate": "",
+      "posterPath": "",
+      "backdropPath": "",
+      "genreIds": [],
+      "popularity": null,
+      "voteAverage": null,
+      "voteCount": null,
+      "adult": false,
+      "mediaType": ""
+    },
+    {
+      "id": "1771478541415",
+      "tmdbId": "244571",
+      "title": "우리는 믿습니다",
+      "name": "우리는 믿습니다",
+      "overview": "창업 실패로 빚더미에 앉은 3명의 청년 사업가. 늦기 전에 거액의 대출금을 갚기 위해 불교 사찰을 이용한 위험천만 사기극을 벌이려 한다.",
+      "releaseDate": "",
+      "firstAirDate": "2024-03-27",
+      "posterPath": "/4A3RjC7BdBgBFNSGpdd4sRc050W.jpg",
+      "posterUrl": "https://image.tmdb.org/t/p/w500/4A3RjC7BdBgBFNSGpdd4sRc050W.jpg",
+      "backdropPath": "/4s9lGIpvvZ2K6rHsXQEt1KXlSky.jpg",
+      "genreIds": [
+        18,
+        80
+      ],
+      "popularity": 3.6194,
+      "voteAverage": 7.3,
+      "voteCount": 21,
+      "adult": false,
+      "mediaType": "tv",
+      "year": "2024",
+      "type": "tv",
+      "myNote": "재밌음",
+      "myRating": 4.5,
+      "tags": [
+        "스릴러",
+        "불교"
+      ],
+      "createdAt": "2026-02-19T05:22:21.415Z",
+      "updatedAt": "2026-02-19T05:22:21.415Z"
     }
   ],
   "comments": []

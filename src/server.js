@@ -4,14 +4,45 @@ const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
 
 // 환경변수 로드
-dotenv.config();
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+}
 
 const { initDb, db } = require('./storage');
 const { requireAdmin, isAdminMiddleware } = require('./tokenAuth');
-const { searchTmdbContents } = require('./tmdbApi');
+const { searchTmdbContents, resolveGenreNames } = require('./tmdbApi');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+function parseTagList(tags) {
+  return typeof tags === 'string'
+    ? tags
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean)
+    : [];
+}
+
+function parseGenreIds(genreIds) {
+  let parsedGenreIds = [];
+  if (typeof genreIds === 'string' && genreIds.trim()) {
+    try {
+      const jsonValue = JSON.parse(genreIds);
+      if (Array.isArray(jsonValue)) {
+        parsedGenreIds = jsonValue
+          .map((v) => Number(v))
+          .filter((v) => !Number.isNaN(v));
+      }
+    } catch {
+      parsedGenreIds = genreIds
+        .split(',')
+        .map((v) => Number(v.trim()))
+        .filter((v) => !Number.isNaN(v));
+    }
+  }
+  return parsedGenreIds;
+}
 
 // 뷰 엔진 설정 (EJS)
 app.set('views', path.join(__dirname, 'views'));
@@ -24,10 +55,84 @@ app.use(cookieParser(process.env.ADMIN_PASSWORD || 'secret'));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use(isAdminMiddleware);
 
-// 홈: 추천 콘텐츠 목록
+// 내 추천 콘텐츠 목록
 app.get('/', async (req, res) => {
   const { contents } = db.data;
-  res.render('home', { contents, isAdmin: req.isAdmin });
+  const contentsWithGenres = await Promise.all(
+    contents.map(async (c) => {
+      const genreNames = await resolveGenreNames(
+        c.genreIds,
+        c.mediaType || c.type
+      );
+      return { ...c, genreNames };
+    })
+  );
+
+  const selectedGenre = typeof req.query.genre === 'string' ? req.query.genre : '';
+  const selectedGenres = Array.isArray(req.query.genres)
+    ? req.query.genres.map((g) => String(g).trim()).filter(Boolean)
+    : typeof req.query.genres === 'string'
+    ? req.query.genres
+        .split(',')
+        .map((g) => g.trim())
+        .filter(Boolean)
+    : [];
+  const searchQuery = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+  const sort = typeof req.query.sort === 'string' ? req.query.sort : '';
+
+  const normalizedGenres = selectedGenres.length
+    ? selectedGenres
+    : selectedGenre
+    ? [selectedGenre]
+    : [];
+
+  const filteredByGenre = normalizedGenres.length
+    ? contentsWithGenres.filter((c) =>
+        Array.isArray(c.genreNames)
+          ? normalizedGenres.some((g) => c.genreNames.includes(g))
+          : false
+      )
+    : contentsWithGenres;
+
+  const filteredBySearch = searchQuery
+    ? filteredByGenre.filter((c) => {
+        const haystack = [
+          c.title,
+          c.name,
+          c.overview,
+          c.myNote,
+          Array.isArray(c.tags) ? c.tags.join(' ') : '',
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        return haystack.includes(searchQuery.toLowerCase());
+      })
+    : filteredByGenre;
+
+  const sorted = [...filteredBySearch];
+  if (sort === 'vote') {
+    sorted.sort(
+      (a, b) => (b.voteAverage || -1) - (a.voteAverage || -1)
+    );
+  } else if (sort === 'pop') {
+    sorted.sort((a, b) => (b.popularity || -1) - (a.popularity || -1));
+  } else if (sort === 'recent') {
+    sorted.sort(
+      (a, b) =>
+        new Date(b.releaseDate || b.firstAirDate || b.year || 0) -
+        new Date(a.releaseDate || a.firstAirDate || a.year || 0)
+    );
+  }
+
+  res.render('home', {
+    contents: sorted,
+    isAdmin: req.isAdmin,
+    selectedGenre,
+    selectedGenres: normalizedGenres,
+    searchQuery,
+    sort,
+  });
 });
 
 // 콘텐츠 상세 + 댓글
@@ -38,9 +143,13 @@ app.get('/content/:id', async (req, res) => {
   if (!content) {
     return res.status(404).send('콘텐츠를 찾을 수 없습니다.');
   }
+  const genreNames = await resolveGenreNames(
+    content.genreIds,
+    content.mediaType || content.type
+  );
   const contentComments = comments.filter((cm) => cm.contentId === id);
   res.render('contentDetail', {
-    content,
+    content: { ...content, genreNames },
     comments: contentComments,
     isAdmin: req.isAdmin,
   });
@@ -52,7 +161,7 @@ app.post('/content/:id/comments', async (req, res) => {
   const { nickname, text } = req.body;
 
   if (!text || !nickname) {
-    return res.status(400).send('닉네임과 댓글 내용을 입력해주세요.');
+    return res.status(400).send('닉네임과 댓글 내용을 입력해 주세요.');
   }
 
   const id = Date.now().toString();
@@ -79,7 +188,7 @@ app.post('/admin/login', (req, res) => {
   const adminPassword = process.env.ADMIN_PASSWORD;
 
   if (!adminPassword) {
-    return res.status(500).send('.env에 ADMIN_PASSWORD를 설정해주세요.');
+    return res.status(500).send('ADMIN_PASSWORD 환경 변수를 설정해 주세요.');
   }
 
   if (password === adminPassword) {
@@ -96,12 +205,36 @@ app.post('/admin/login', (req, res) => {
   });
 });
 
-// 관리자: 새 콘텐츠 등록 페이지
+// 관리자: 추천 콘텐츠 등록 페이지
 app.get('/admin/new', requireAdmin, (req, res) => {
-  res.render('adminNew', { isAdmin: true });
+  const manageQuery =
+    typeof req.query.manageQ === 'string' ? req.query.manageQ.trim() : '';
+  const manageSort =
+    req.query.manageSort === 'rating' || req.query.manageSort === 'latest'
+      ? req.query.manageSort
+      : 'latest';
+
+  const filtered = manageQuery
+    ? db.data.contents.filter((c) =>
+        String(c.title || c.name || '')
+          .toLowerCase()
+          .includes(manageQuery.toLowerCase())
+      )
+    : [...db.data.contents];
+
+  const contents = [...filtered].sort((a, b) => {
+    if (manageSort === 'rating') {
+      return (Number(b.myRating) || -1) - (Number(a.myRating) || -1);
+    }
+    const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
+    const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
+    return bTime - aTime;
+  });
+
+  res.render('adminNew', { isAdmin: true, contents, manageQuery, manageSort });
 });
 
-// TMDB 검색 프록시 (관리자 전용)
+// TMDB 검색 API (관리자 전용)
 app.get('/api/tmdb/search', requireAdmin, async (req, res) => {
   const query = req.query.q;
   if (!query) {
@@ -112,12 +245,12 @@ app.get('/api/tmdb/search', requireAdmin, async (req, res) => {
     const results = await searchTmdbContents(query);
     res.json(results);
   } catch (err) {
-    // TMDB에서 내려준 에러 메시지를 함께 전달
+    // TMDB에서 내려온 에러 메시지를 최대한 그대로 전달
     console.error('TMDB 검색 오류:', err.response?.data || err.message);
     const apiErrorMessage = err.response?.data?.errorMessage;
     res.status(500).json({
       error:
-        apiErrorMessage || 'TMDB 검색 중 오류가 발생했습니다. (서버 로그를 확인하세요.)',
+        apiErrorMessage || 'TMDB 검색 중 오류가 발생했습니다. (서버 로그를 확인해 주세요.)',
     });
   }
 });
@@ -127,7 +260,19 @@ app.post('/admin/content', requireAdmin, async (req, res) => {
   const {
     tmdbId,
     title,
+    name,
+    overview,
+    releaseDate,
+    firstAirDate,
+    posterPath,
     posterUrl,
+    backdropPath,
+    genreIds,
+    popularity,
+    voteAverage,
+    voteCount,
+    adult,
+    mediaType,
     year,
     type,
     myNote,
@@ -135,24 +280,50 @@ app.post('/admin/content', requireAdmin, async (req, res) => {
     tags,
   } = req.body;
 
-  if (!tmdbId || !title || !myNote || !myRating) {
+  if (!tmdbId || !(title || name) || !myNote || !myRating) {
     return res.status(400).send('필수 값이 누락되었습니다.');
   }
 
   const id = Date.now().toString();
-  const tagList =
-    typeof tags === 'string'
-      ? tags
-          .split(',')
-          .map((t) => t.trim())
-          .filter(Boolean)
-      : [];
+  const tagList = parseTagList(tags);
+  const parsedGenreIds = parseGenreIds(genreIds);
 
   db.data.contents.push({
     id,
     tmdbId,
-    title,
-    posterUrl,
+    title: title || name || '',
+    name: name || '',
+    overview: overview || '',
+    releaseDate: releaseDate || '',
+    firstAirDate: firstAirDate || '',
+    posterPath: posterPath || '',
+    posterUrl: posterUrl || '',
+    backdropPath: backdropPath || '',
+    genreIds: parsedGenreIds,
+    popularity:
+      typeof popularity === 'string' && popularity.trim()
+        ? Number(popularity)
+        : typeof popularity === 'number'
+        ? popularity
+        : null,
+    voteAverage:
+      typeof voteAverage === 'string' && voteAverage.trim()
+        ? Number(voteAverage)
+        : typeof voteAverage === 'number'
+        ? voteAverage
+        : null,
+    voteCount:
+      typeof voteCount === 'string' && voteCount.trim()
+        ? Number(voteCount)
+        : typeof voteCount === 'number'
+        ? voteCount
+        : null,
+    adult:
+      adult === true ||
+      adult === 'true' ||
+      adult === '1' ||
+      adult === 1,
+    mediaType: mediaType || '',
     year,
     type,
     myNote,
@@ -166,10 +337,116 @@ app.post('/admin/content', requireAdmin, async (req, res) => {
   res.redirect('/');
 });
 
+// 관리자: 추천 콘텐츠 수정 페이지
+app.get('/admin/content/:id/edit', requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const content = db.data.contents.find((c) => c.id === id);
+  if (!content) {
+    return res.status(404).send('콘텐츠를 찾을 수 없습니다.');
+  }
+  res.render('adminEdit', { isAdmin: true, content });
+});
+
+// 관리자: 추천 콘텐츠 수정
+app.post('/admin/content/:id/edit', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const idx = db.data.contents.findIndex((c) => c.id === id);
+  if (idx < 0) {
+    return res.status(404).send('콘텐츠를 찾을 수 없습니다.');
+  }
+
+  const current = db.data.contents[idx];
+  const {
+    title,
+    name,
+    overview,
+    releaseDate,
+    firstAirDate,
+    posterPath,
+    posterUrl,
+    backdropPath,
+    genreIds,
+    popularity,
+    voteAverage,
+    voteCount,
+    adult,
+    mediaType,
+    year,
+    type,
+    myNote,
+    myRating,
+    tags,
+  } = req.body;
+
+  if (!(title || name) || !myNote || !myRating) {
+    return res.status(400).send('필수 값이 누락되었습니다.');
+  }
+
+  db.data.contents[idx] = {
+    ...current,
+    title: title || name || '',
+    name: name || '',
+    overview: overview || '',
+    releaseDate: releaseDate || '',
+    firstAirDate: firstAirDate || '',
+    posterPath: posterPath || '',
+    posterUrl: posterUrl || '',
+    backdropPath: backdropPath || '',
+    genreIds: parseGenreIds(genreIds),
+    popularity:
+      typeof popularity === 'string' && popularity.trim()
+        ? Number(popularity)
+        : typeof popularity === 'number'
+        ? popularity
+        : null,
+    voteAverage:
+      typeof voteAverage === 'string' && voteAverage.trim()
+        ? Number(voteAverage)
+        : typeof voteAverage === 'number'
+        ? voteAverage
+        : null,
+    voteCount:
+      typeof voteCount === 'string' && voteCount.trim()
+        ? Number(voteCount)
+        : typeof voteCount === 'number'
+        ? voteCount
+        : null,
+    adult:
+      adult === true ||
+      adult === 'true' ||
+      adult === '1' ||
+      adult === 1,
+    mediaType: mediaType || '',
+    year: year || '',
+    type: type || '',
+    myNote,
+    myRating: Number(myRating),
+    tags: parseTagList(tags),
+    updatedAt: new Date().toISOString(),
+  };
+
+  await db.write();
+  res.redirect(`/content/${id}`);
+});
+
+// 관리자: 추천 콘텐츠 삭제
+app.post('/admin/content/:id/delete', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const exists = db.data.contents.some((c) => c.id === id);
+  if (!exists) {
+    return res.status(404).send('콘텐츠를 찾을 수 없습니다.');
+  }
+
+  db.data.contents = db.data.contents.filter((c) => c.id !== id);
+  db.data.comments = db.data.comments.filter((cm) => cm.contentId !== id);
+  await db.write();
+
+  res.redirect('/');
+});
+
 // 서버 시작
 initDb().then(() => {
   app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
   });
 });
-

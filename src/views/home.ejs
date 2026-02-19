@@ -22,6 +22,10 @@
       .navbar-brand {
         font-weight: 700;
       }
+      .card-img-top {
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+      }
     </style>
   </head>
   <body>
@@ -30,7 +34,7 @@
         <a class="navbar-brand" href="/">넷플릭스 추천</a>
         <div class="d-flex">
           <% if (isAdmin) { %>
-          <a href="/admin/new" class="btn btn-primary btn-sm">새 추천 등록</a>
+          <a href="/admin/new" class="btn btn-primary btn-sm">추천 등록</a>
           <% } else { %>
           <a href="/admin/login" class="btn btn-primary btn-sm">관리자 로그인</a>
           <% } %>
@@ -39,36 +43,254 @@
     </nav>
 
     <div class="container">
-      <h1 class="mb-4">내가 본 넷플릭스 추천 목록</h1>
+      <form id="filtersForm" class="row g-2 align-items-center mb-3" method="get" action="/">
+        <div class="col-12 col-md-5">
+          <input
+            type="text"
+            name="q"
+            class="form-control"
+            placeholder="제목, 개요, 태그 검색..."
+            value="<%= searchQuery || '' %>"
+          />
+        </div>
+        <div class="col-12 col-md-4">
+          <select name="sort" class="form-select">
+            <option value="" <%= !sort ? 'selected' : '' %>>기본</option>
+            <option value="smart" <%= sort === 'smart' ? 'selected' : '' %>>내 점수 > TMDB > 인기지표</option>
+            <option value="vote" <%= sort === 'vote' ? 'selected' : '' %>>TMDB 평점</option>
+            <option value="pop" <%= sort === 'pop' ? 'selected' : '' %>>인기지표</option>
+            <option value="recent" <%= sort === 'recent' ? 'selected' : '' %>>최근</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-auto">
+          <button type="submit" class="btn btn-primary">검색</button>
+          <a href="/" class="btn btn-outline-secondary ms-2">초기화</a>
+        </div>
+
+        <% const allGenres = Array.from(new Set((contents || []).flatMap(function (c) { return Array.isArray(c.genreNames) ? c.genreNames : []; }))).sort(); %>
+        <% if (allGenres.length) { %>
+        <div class="mb-3">
+          <details class="border rounded p-3" <%= (selectedGenres && selectedGenres.length) ? 'open' : '' %>>
+            <summary class="fw-bold">장르</summary>
+            <div class="mt-2">
+              <input type="text" id="genreFilterInput" class="form-control form-control-sm" placeholder="장르 필터..." />
+            </div>
+            <div class="d-flex flex-wrap gap-2 mt-2">
+              <% allGenres.forEach(function (g) { %>
+              <% const checked = selectedGenres && selectedGenres.includes(g); %>
+              <label class="btn btn-sm btn-outline-info" style="cursor: pointer;">
+                <input
+                  type="checkbox"
+                  class="form-check-input me-1 genre-checkbox"
+                  name="genres"
+                  value="<%= g %>"
+                  <%= checked ? 'checked' : '' %>
+                />
+                <%= g %>
+              </label>
+              <% }); %>
+            </div>
+            <div class="small text-muted mt-2">다중 선택 지원. 변경 시 자동 적용.</div>
+          </details>
+        </div>
+        <% } %>
+      </form>
+
+      <% if (selectedGenres && selectedGenres.length) { %>
+      <div class="alert alert-info d-flex justify-content-between align-items-center">
+        <div>
+          필터:
+          <% selectedGenres.forEach(function (g) { %>
+          <a href="/?genres=<%= encodeURIComponent(selectedGenres.filter(function (x) { return x !== g; }).join(',')) %><% if (searchQuery) { %>&q=<%= encodeURIComponent(searchQuery) %><% } %><% if (sort) { %>&sort=<%= encodeURIComponent(sort) %><% } %>" class="badge bg-info text-dark me-1 text-decoration-none"><%= g %> x</a>
+          <% }); %>
+        </div>
+        <a href="/?q=<%= encodeURIComponent(searchQuery || '') %>&sort=<%= encodeURIComponent(sort || '') %>" class="btn btn-sm btn-outline-dark">장르 초기화</a>
+      </div>
+      <% } %>
+
+      <h1 class="mb-2">추천 목록</h1>
+      <div class="text-muted mb-3">
+        <% if (searchQuery) { %>
+        <span>검색어: <strong><%= searchQuery %></strong></span>
+        <% } %>
+        <% if (sort) { %>
+        <span class="ms-2">정렬: <strong><%= sort === 'smart' ? '내 점수 > TMDB > 인기지표' : sort === 'vote' ? 'TMDB 평점' : sort === 'pop' ? '인기지표' : '최근' %></strong></span>
+        <% } %>
+      </div>
+      <div class="mb-3">
+        <span class="badge bg-secondary me-2">결과: <%= contents.length %></span>
+        <% if (searchQuery) { %>
+        <span class="badge bg-dark me-2">검색어: <%= searchQuery %></span>
+        <% } %>
+        <% if (sort) { %>
+        <span class="badge bg-dark me-2">정렬: <%= sort === 'smart' ? '내 점수 > TMDB > 인기지표' : sort === 'vote' ? 'TMDB 평점' : sort === 'pop' ? '인기지표' : '최근' %></span>
+        <% } %>
+        <% if (selectedGenres && selectedGenres.length) { %>
+        <span class="badge bg-info text-dark">장르: <%= selectedGenres.join(', ') %></span>
+        <% } %>
+      </div>
+      <div class="mb-3" id="recentSearches" style="display:none;">
+        <div class="small text-muted">최근 검색어:</div>
+        <div class="d-flex flex-wrap gap-2 mt-1" id="recentSearchesList"></div>
+      </div>
 
       <% if (!contents || contents.length === 0) { %>
-      <p>아직 등록된 추천이 없습니다. (관리자 페이지에서 추가해주세요)</p>
+      <p>아직 등록된 추천이 없습니다. (관리자 페이지에서 추가해 주세요)</p>
       <% } else { %>
       <div class="row row-cols-1 row-cols-md-3 g-4">
         <% contents.forEach(function (c) { %>
         <div class="col">
           <div class="card h-100">
-            <% if (c.posterUrl) { %>
-            <img src="<%= c.posterUrl %>" class="card-img-top" alt="<%= c.title %>" />
-            <% } %>
+            <% const cardImage = c.backdropPath ? 'https://image.tmdb.org/t/p/w780' + c.backdropPath : (c.posterUrl || (c.posterPath ? 'https://image.tmdb.org/t/p/w500' + c.posterPath : '')); %>
+            <% if (cardImage) { %>
+            <img src="<%= cardImage %>" class="card-img-top" alt="<%= c.title || c.name || '' %>" />
             <div class="card-body">
-              <h5 class="card-title"><%= c.title %></h5>
+              <h5 class="card-title"><%= c.title || c.name || '' %></h5>
               <p class="card-text">
                 ⭐ <%= c.myRating %> / 5
               </p>
               <p class="card-text">
                 <%= c.myNote.length > 60 ? c.myNote.slice(0, 60) + '...' : c.myNote %>
               </p>
+              <% if (c.overview) { %>
+              <div class="text-muted small mb-2">
+                <%= c.overview.length > 120 ? c.overview.slice(0, 120) + '...' : c.overview %>
+              </div>
+              <p class="card-text text-muted">
+                <% if (sort) { %>
+                <span class="me-2">정렬 기준: <%= sort === 'smart' ? '내 점수 > TMDB > 인기지표' : sort === 'vote' ? 'TMDB 평점' : sort === 'pop' ? '인기지표' : '최근' %></span>
+                <% } %>
+                <% if (typeof c.voteAverage === 'number') { %>
+                TMDB 평점 <%= c.voteAverage %>
+                <% if (typeof c.voteCount === 'number') { %>(<%= c.voteCount %>)<% } %>
+                <% if (typeof c.popularity === 'number') { %>
+                <span class="ms-2">인기지표: <%= c.popularity %></span>
+                <% if (c.mediaType) { %>
+                <span class="ms-2">타입: <%= c.mediaType %></span>
+                <% } %>
+                <% } %>
+                <% } %>
+              </p>
+              <% } %>
+              <% if (Array.isArray(c.genreNames) && c.genreNames.length) { %>
+              <p class="card-text">
+                <% c.genreNames.forEach(function (g) { %>
+                <a href="/<% const current = (selectedGenres && selectedGenres.length ? selectedGenres : (selectedGenre ? [selectedGenre] : [])); const next = current.includes(g) ? current.filter(function (x) { return x !== g; }) : current.concat([g]).filter(function (v, i, a) { return a.indexOf(v) === i; }); %>?genres=<%= encodeURIComponent(next.join(",")) %><% if (searchQuery) { %>&q=<%= encodeURIComponent(searchQuery) %><% } %><% if (sort) { %>&sort=<%= encodeURIComponent(sort) %><% } %>" class="badge bg-info text-dark me-1 text-decoration-none"><%= g %></a>
+                <% }); %>
+              </p>
+              <% } %>
             </div>
-            <div class="card-footer text-end">
+            <div class="card-footer d-flex justify-content-end gap-2">
               <a href="/content/<%= c.id %>" class="btn btn-sm btn-primary">자세히 보기</a>
+              <% if (isAdmin) { %>
+              <a href="/admin/content/<%= c.id %>/edit" class="btn btn-sm btn-outline-secondary">수정</a>
+              <form
+                method="post"
+                action="/admin/content/<%= c.id %>/delete"
+                onsubmit="return confirm('이 추천을 삭제할까요?');"
+                class="d-inline"
+              >
+                <button type="submit" class="btn btn-sm btn-outline-danger">삭제</button>
+              </form>
+              <% } %>
             </div>
+            <% } %>
           </div>
         </div>
         <% }); %>
       </div>
       <% } %>
     </div>
-  </body>
-  </html>
+    <script>
+      window.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('filtersForm');
+        const checkboxes = document.querySelectorAll('.genre-checkbox');
+        checkboxes.forEach((cb) => {
+          cb.addEventListener('change', () => {
+            if (form) form.submit();
+          });
+        });
+      });
+    </script>
+    <script>
+      window.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('filtersForm');
+        const checkboxes = document.querySelectorAll('.genre-checkbox');
+        const genreFilterInput = document.getElementById('genreFilterInput');
+        const recentWrap = document.getElementById('recentSearches');
+        const recentList = document.getElementById('recentSearchesList');
+        const searchInput = form ? form.querySelector('input[name="q"]') : null;
+        const sortSelect = form ? form.querySelector('select[name="sort"]') : null;
 
+        checkboxes.forEach((cb) => {
+          cb.addEventListener('change', () => {
+            if (form) form.submit();
+          });
+        });
+
+        if (genreFilterInput) {
+          genreFilterInput.addEventListener('input', () => {
+            const term = genreFilterInput.value.trim().toLowerCase();
+            document.querySelectorAll('.genre-checkbox').forEach((cb) => {
+              const label = cb.closest('label');
+              if (!label) return;
+              const text = label.textContent.trim().toLowerCase();
+              label.style.display = text.includes(term) ? '' : 'none';
+            });
+          });
+        }
+
+        try {
+          const params = new URLSearchParams(window.location.search);
+          if (searchInput && !params.get('q')) {
+            const lastQ = sessionStorage.getItem('lastSearchQuery') || '';
+            if (lastQ) searchInput.value = lastQ;
+          }
+          if (sortSelect && !params.get('sort')) {
+            const lastSort = sessionStorage.getItem('lastSort') || '';
+            if (lastSort) sortSelect.value = lastSort;
+          }
+          if (!params.get('genres')) {
+            const lastGenres = JSON.parse(sessionStorage.getItem('lastGenres') || '[]');
+            if (Array.isArray(lastGenres) && lastGenres.length) {
+              document.querySelectorAll('.genre-checkbox').forEach((cb) => {
+                cb.checked = lastGenres.includes(cb.value);
+              });
+            }
+          }
+        } catch (e) {}
+
+        try {
+          if (searchInput) sessionStorage.setItem('lastSearchQuery', searchInput.value || '');
+          if (sortSelect) sessionStorage.setItem('lastSort', sortSelect.value || '');
+          const selectedGenres = Array.from(document.querySelectorAll('.genre-checkbox:checked'))
+            .map((cb) => cb.value);
+          sessionStorage.setItem('lastGenres', JSON.stringify(selectedGenres));
+        } catch (e) {}
+
+        try {
+          const current = searchInput ? searchInput.value.trim() : '';
+          if (current) {
+            const existing = JSON.parse(localStorage.getItem('recentSearches') || '[]');
+            const next = [current].concat(existing.filter((v) => v !== current)).slice(0, 5);
+            localStorage.setItem('recentSearches', JSON.stringify(next));
+          }
+          const list = JSON.parse(localStorage.getItem('recentSearches') || '[]');
+          if (recentWrap && recentList && Array.isArray(list) && list.length) {
+            recentList.innerHTML = '';
+            list.forEach((q) => {
+              const a = document.createElement('a');
+              const params = new URLSearchParams(window.location.search);
+              params.set('q', q);
+              a.href = '/?' + params.toString();
+              a.className = 'badge bg-light text-dark text-decoration-none border';
+              a.textContent = q;
+              recentList.appendChild(a);
+            });
+            recentWrap.style.display = '';
+          }
+        } catch (e) {}
+      });
+    </script>
+  </body>
+</html>
