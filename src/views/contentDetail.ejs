@@ -87,7 +87,7 @@
         line-height: 1;
       }
       .star::after {
-        content: '★';
+        content: '\2605';
         position: absolute;
         left: 0;
         top: 0;
@@ -146,29 +146,6 @@
             <%= content.year || content.pubDate || '' %> · <%= content.type || '콘텐츠' %>
           </p>
           <% const ratingValue = typeof content.myRating === 'number' ? content.myRating : (parseFloat(content.myRating) || 0); %>
-          <div class="info-box info-box--note mb-4">
-            <h4>나의 감상</h4>
-            <p class="detail-body-text mb-0"><%= content.myNote %></p>
-          </div>
-          <% if (content.overview) { %>
-          <div class="info-box info-box--overview mb-3">
-            <div class="info-box info-box--rating rating-box mb-3">
-              <h4>SUPASONIC의 평점</h4>
-              <div class="rating-score">
-                <span class="rating-number"><%= ratingValue %></span>
-                <span class="rating-max">/ 5</span>
-              </div>
-              <div class="rating-stars" aria-label="SUPASONIC의 평점 <%= ratingValue %>점">
-                <% for (let i = 1; i <= 5; i++) { %>
-                <% const fill = Math.max(0, Math.min(1, ratingValue - (i - 1))) * 100; %>
-                <span class="star" style="--fill: <%= fill %>%">★</span>
-                <% } %>
-              </div>
-            </div>
-            <h4 class="mt-1">영화 내용</h4>
-            <p class="detail-body-text mb-0"><%= content.overview %></p>
-          </div>
-          <% } else { %>
           <div class="info-box info-box--rating rating-box mb-3">
             <h4>SUPASONIC의 평점</h4>
             <div class="rating-score">
@@ -178,12 +155,21 @@
             <div class="rating-stars" aria-label="SUPASONIC의 평점 <%= ratingValue %>점">
               <% for (let i = 1; i <= 5; i++) { %>
               <% const fill = Math.max(0, Math.min(1, ratingValue - (i - 1))) * 100; %>
-              <span class="star" style="--fill: <%= fill %>%">★</span>
+              <span class="star" style="--fill: <%= fill %>%">&#9733;</span>
               <% } %>
             </div>
           </div>
+          <div class="info-box info-box--note mb-4">
+            <h4>나의 감상</h4>
+            <p class="detail-body-text mb-0"><%= content.myNote %></p>
+          </div>
+          <% if (content.overview) { %>
+          <div class="info-box info-box--overview mb-3">
+            <h4>영화 내용</h4>
+            <p class="detail-body-text mb-0"><%= content.overview %></p>
+          </div>
           <% } %>
-          <ul class="list-unstyled">
+<ul class="list-unstyled">
             <% if (content.releaseDate || content.firstAirDate) { %>
             <li>
               <strong>공개일시:</strong>
