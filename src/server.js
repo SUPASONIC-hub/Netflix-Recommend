@@ -8,7 +8,7 @@ if (process.env.NODE_ENV !== 'production') {
   dotenv.config();
 }
 
-const { initDb, db } = require('./storage');
+const { prisma } = require('./prisma');
 const { requireAdmin, isAdminMiddleware } = require('./tokenAuth');
 const { searchTmdbContents, resolveGenreNames } = require('./tmdbApi');
 
@@ -57,7 +57,7 @@ app.use(isAdminMiddleware);
 
 // 내 추천 콘텐츠 목록
 app.get('/', async (req, res) => {
-  const { contents } = db.data;
+  const contents = await prisma.content.findMany();
   const contentsWithGenres = await Promise.all(
     contents.map(async (c) => {
       const genreNames = await resolveGenreNames(
@@ -138,8 +138,7 @@ app.get('/', async (req, res) => {
 // 콘텐츠 상세 + 댓글
 app.get('/content/:id', async (req, res) => {
   const id = req.params.id;
-  const { contents, comments } = db.data;
-  const content = contents.find((c) => c.id === id);
+  const content = await prisma.content.findUnique({ where: { id } });
   if (!content) {
     return res.status(404).send('콘텐츠를 찾을 수 없습니다.');
   }
@@ -147,7 +146,10 @@ app.get('/content/:id', async (req, res) => {
     content.genreIds,
     content.mediaType || content.type
   );
-  const contentComments = comments.filter((cm) => cm.contentId === id);
+  const contentComments = await prisma.comment.findMany({
+    where: { contentId: id },
+    orderBy: { createdAt: 'asc' },
+  });
   res.render('contentDetail', {
     content: { ...content, genreNames },
     comments: contentComments,
@@ -165,14 +167,14 @@ app.post('/content/:id/comments', async (req, res) => {
   }
 
   const id = Date.now().toString();
-  db.data.comments.push({
-    id,
-    contentId,
-    nickname,
-    text,
-    createdAt: new Date().toISOString(),
+  await prisma.comment.create({
+    data: {
+      id,
+      contentId,
+      nickname,
+      text,
+    },
   });
-  await db.write();
 
   res.redirect(`/content/${contentId}`);
 });
@@ -206,7 +208,7 @@ app.post('/admin/login', (req, res) => {
 });
 
 // 관리자: 추천 콘텐츠 등록 페이지
-app.get('/admin/new', requireAdmin, (req, res) => {
+app.get('/admin/new', requireAdmin, async (req, res) => {
   const manageQuery =
     typeof req.query.manageQ === 'string' ? req.query.manageQ.trim() : '';
   const manageSort =
@@ -214,13 +216,14 @@ app.get('/admin/new', requireAdmin, (req, res) => {
       ? req.query.manageSort
       : 'latest';
 
+  const allContents = await prisma.content.findMany();
   const filtered = manageQuery
-    ? db.data.contents.filter((c) =>
+    ? allContents.filter((c) =>
         String(c.title || c.name || '')
           .toLowerCase()
           .includes(manageQuery.toLowerCase())
       )
-    : [...db.data.contents];
+    : [...allContents];
 
   const contents = [...filtered].sort((a, b) => {
     if (manageSort === 'rating') {
@@ -288,59 +291,58 @@ app.post('/admin/content', requireAdmin, async (req, res) => {
   const tagList = parseTagList(tags);
   const parsedGenreIds = parseGenreIds(genreIds);
 
-  db.data.contents.push({
-    id,
-    tmdbId,
-    title: title || name || '',
-    name: name || '',
-    overview: overview || '',
-    releaseDate: releaseDate || '',
-    firstAirDate: firstAirDate || '',
-    posterPath: posterPath || '',
-    posterUrl: posterUrl || '',
-    backdropPath: backdropPath || '',
-    genreIds: parsedGenreIds,
-    popularity:
-      typeof popularity === 'string' && popularity.trim()
-        ? Number(popularity)
-        : typeof popularity === 'number'
-        ? popularity
-        : null,
-    voteAverage:
-      typeof voteAverage === 'string' && voteAverage.trim()
-        ? Number(voteAverage)
-        : typeof voteAverage === 'number'
-        ? voteAverage
-        : null,
-    voteCount:
-      typeof voteCount === 'string' && voteCount.trim()
-        ? Number(voteCount)
-        : typeof voteCount === 'number'
-        ? voteCount
-        : null,
-    adult:
-      adult === true ||
-      adult === 'true' ||
-      adult === '1' ||
-      adult === 1,
-    mediaType: mediaType || '',
-    year,
-    type,
-    myNote,
-    myRating: Number(myRating),
-    tags: tagList,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+  await prisma.content.create({
+    data: {
+      id,
+      tmdbId,
+      title: title || name || '',
+      name: name || '',
+      overview: overview || '',
+      releaseDate: releaseDate || '',
+      firstAirDate: firstAirDate || '',
+      posterPath: posterPath || '',
+      posterUrl: posterUrl || '',
+      backdropPath: backdropPath || '',
+      genreIds: parsedGenreIds,
+      popularity:
+        typeof popularity === 'string' && popularity.trim()
+          ? Number(popularity)
+          : typeof popularity === 'number'
+          ? popularity
+          : null,
+      voteAverage:
+        typeof voteAverage === 'string' && voteAverage.trim()
+          ? Number(voteAverage)
+          : typeof voteAverage === 'number'
+          ? voteAverage
+          : null,
+      voteCount:
+        typeof voteCount === 'string' && voteCount.trim()
+          ? Number(voteCount)
+          : typeof voteCount === 'number'
+          ? voteCount
+          : null,
+      adult:
+        adult === true ||
+        adult === 'true' ||
+        adult === '1' ||
+        adult === 1,
+      mediaType: mediaType || '',
+      year: year || '',
+      type: type || '',
+      myNote,
+      myRating: Number(myRating),
+      tags: tagList,
+    },
   });
-  await db.write();
 
   res.redirect('/');
 });
 
 // 관리자: 추천 콘텐츠 수정 페이지
-app.get('/admin/content/:id/edit', requireAdmin, (req, res) => {
+app.get('/admin/content/:id/edit', requireAdmin, async (req, res) => {
   const { id } = req.params;
-  const content = db.data.contents.find((c) => c.id === id);
+  const content = await prisma.content.findUnique({ where: { id } });
   if (!content) {
     return res.status(404).send('콘텐츠를 찾을 수 없습니다.');
   }
@@ -350,12 +352,10 @@ app.get('/admin/content/:id/edit', requireAdmin, (req, res) => {
 // 관리자: 추천 콘텐츠 수정
 app.post('/admin/content/:id/edit', requireAdmin, async (req, res) => {
   const { id } = req.params;
-  const idx = db.data.contents.findIndex((c) => c.id === id);
-  if (idx < 0) {
+  const current = await prisma.content.findUnique({ where: { id } });
+  if (!current) {
     return res.status(404).send('콘텐츠를 찾을 수 없습니다.');
   }
-
-  const current = db.data.contents[idx];
   const {
     title,
     name,
@@ -382,71 +382,82 @@ app.post('/admin/content/:id/edit', requireAdmin, async (req, res) => {
     return res.status(400).send('필수 값이 누락되었습니다.');
   }
 
-  db.data.contents[idx] = {
-    ...current,
-    title: title || name || '',
-    name: name || '',
-    overview: overview || '',
-    releaseDate: releaseDate || '',
-    firstAirDate: firstAirDate || '',
-    posterPath: posterPath || '',
-    posterUrl: posterUrl || '',
-    backdropPath: backdropPath || '',
-    genreIds: parseGenreIds(genreIds),
-    popularity:
-      typeof popularity === 'string' && popularity.trim()
-        ? Number(popularity)
-        : typeof popularity === 'number'
-        ? popularity
-        : null,
-    voteAverage:
-      typeof voteAverage === 'string' && voteAverage.trim()
-        ? Number(voteAverage)
-        : typeof voteAverage === 'number'
-        ? voteAverage
-        : null,
-    voteCount:
-      typeof voteCount === 'string' && voteCount.trim()
-        ? Number(voteCount)
-        : typeof voteCount === 'number'
-        ? voteCount
-        : null,
-    adult:
-      adult === true ||
-      adult === 'true' ||
-      adult === '1' ||
-      adult === 1,
-    mediaType: mediaType || '',
-    year: year || '',
-    type: type || '',
-    myNote,
-    myRating: Number(myRating),
-    tags: parseTagList(tags),
-    updatedAt: new Date().toISOString(),
-  };
-
-  await db.write();
+  await prisma.content.update({
+    where: { id },
+    data: {
+      title: title || name || '',
+      name: name || '',
+      overview: overview || '',
+      releaseDate: releaseDate || '',
+      firstAirDate: firstAirDate || '',
+      posterPath: posterPath || '',
+      posterUrl: posterUrl || '',
+      backdropPath: backdropPath || '',
+      genreIds: parseGenreIds(genreIds),
+      popularity:
+        typeof popularity === 'string' && popularity.trim()
+          ? Number(popularity)
+          : typeof popularity === 'number'
+          ? popularity
+          : null,
+      voteAverage:
+        typeof voteAverage === 'string' && voteAverage.trim()
+          ? Number(voteAverage)
+          : typeof voteAverage === 'number'
+          ? voteAverage
+          : null,
+      voteCount:
+        typeof voteCount === 'string' && voteCount.trim()
+          ? Number(voteCount)
+          : typeof voteCount === 'number'
+          ? voteCount
+          : null,
+      adult:
+        adult === true ||
+        adult === 'true' ||
+        adult === '1' ||
+        adult === 1,
+      mediaType: mediaType || '',
+      year: year || '',
+      type: type || '',
+      myNote,
+      myRating: Number(myRating),
+      tags: parseTagList(tags),
+    },
+  });
   res.redirect(`/content/${id}`);
 });
 
 // 관리자: 추천 콘텐츠 삭제
 app.post('/admin/content/:id/delete', requireAdmin, async (req, res) => {
   const { id } = req.params;
-  const exists = db.data.contents.some((c) => c.id === id);
-  if (!exists) {
+  const content = await prisma.content.findUnique({ where: { id } });
+  if (!content) {
     return res.status(404).send('콘텐츠를 찾을 수 없습니다.');
   }
 
-  db.data.contents = db.data.contents.filter((c) => c.id !== id);
-  db.data.comments = db.data.comments.filter((cm) => cm.contentId !== id);
-  await db.write();
+  await prisma.$transaction([
+    prisma.comment.deleteMany({ where: { contentId: id } }),
+    prisma.content.delete({ where: { id } }),
+  ]);
 
   res.redirect('/');
 });
 
 // 서버 시작
-initDb().then(() => {
-  app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+prisma
+  .$connect()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server is running on http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error('Failed to connect to database:', err);
+    process.exit(1);
   });
+
+process.on('SIGINT', async () => {
+  await prisma.$disconnect();
+  process.exit(0);
 });
