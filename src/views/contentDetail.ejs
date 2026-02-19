@@ -28,6 +28,74 @@
         white-space: pre-wrap;
         overflow-wrap: anywhere;
       }
+      .info-box {
+        border: 1px solid #9ec5fe;
+        border-radius: 12px;
+        padding: 16px;
+        background: #e7f1ff;
+      }
+      .info-box h4 {
+        font-size: 1rem;
+        margin-bottom: 10px;
+        font-weight: 700;
+        color: #0b5ed7;
+      }
+      .info-box--rating {
+        background: #d7ebff;
+        border-color: #6ea8fe;
+      }
+      .info-box--note {
+        background: #eaf4ff;
+        border-color: #9ec5fe;
+        padding: 18px;
+      }
+      .info-box--overview {
+        background: #f0f7ff;
+        border-color: #b6d4fe;
+        padding: 20px;
+      }
+      .rating-box {
+        padding: 16px 18px;
+        background: #cfe2ff;
+        border-color: #4c8ef7;
+        box-shadow: 0 8px 18px rgba(11, 94, 215, 0.15);
+      }
+      .rating-score {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        font-weight: 700;
+        color: #0b5ed7;
+      }
+      .rating-number {
+        font-size: 2.4rem;
+        line-height: 1;
+      }
+      .rating-max {
+        font-size: 1.3rem;
+        opacity: 0.85;
+      }
+      .rating-stars {
+        margin-top: 8px;
+        font-size: 1.7rem;
+        letter-spacing: 2px;
+      }
+      .star {
+        position: relative;
+        display: inline-block;
+        color: #cfe2ff;
+        line-height: 1;
+      }
+      .star::after {
+        content: '★';
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: var(--fill, 0%);
+        overflow: hidden;
+        color: #0b5ed7;
+        white-space: nowrap;
+      }
     </style>
   </head>
   <body>
@@ -77,10 +145,43 @@
           <p class="text-muted">
             <%= content.year || content.pubDate || '' %> · <%= content.type || '콘텐츠' %>
           </p>
-          <p>SUPASONIC의 평점 <%= content.myRating %> / 5</p>
-          <p class="detail-body-text"><%= content.myNote %></p>
+          <% const ratingValue = typeof content.myRating === 'number' ? content.myRating : (parseFloat(content.myRating) || 0); %>
+          <div class="info-box info-box--note mb-4">
+            <h4>나의 감상</h4>
+            <p class="detail-body-text mb-0"><%= content.myNote %></p>
+          </div>
           <% if (content.overview) { %>
-          <p class="detail-body-text"><%= content.overview %></p>
+          <div class="info-box info-box--overview mb-3">
+            <div class="info-box info-box--rating rating-box mb-3">
+              <h4>SUPASONIC의 평점</h4>
+              <div class="rating-score">
+                <span class="rating-number"><%= ratingValue %></span>
+                <span class="rating-max">/ 5</span>
+              </div>
+              <div class="rating-stars" aria-label="SUPASONIC의 평점 <%= ratingValue %>점">
+                <% for (let i = 1; i <= 5; i++) { %>
+                <% const fill = Math.max(0, Math.min(1, ratingValue - (i - 1))) * 100; %>
+                <span class="star" style="--fill: <%= fill %>%">★</span>
+                <% } %>
+              </div>
+            </div>
+            <h4 class="mt-1">영화 내용</h4>
+            <p class="detail-body-text mb-0"><%= content.overview %></p>
+          </div>
+          <% } else { %>
+          <div class="info-box info-box--rating rating-box mb-3">
+            <h4>SUPASONIC의 평점</h4>
+            <div class="rating-score">
+              <span class="rating-number"><%= ratingValue %></span>
+              <span class="rating-max">/ 5</span>
+            </div>
+            <div class="rating-stars" aria-label="SUPASONIC의 평점 <%= ratingValue %>점">
+              <% for (let i = 1; i <= 5; i++) { %>
+              <% const fill = Math.max(0, Math.min(1, ratingValue - (i - 1))) * 100; %>
+              <span class="star" style="--fill: <%= fill %>%">★</span>
+              <% } %>
+            </div>
+          </div>
           <% } %>
           <ul class="list-unstyled">
             <% if (content.releaseDate || content.firstAirDate) { %>
