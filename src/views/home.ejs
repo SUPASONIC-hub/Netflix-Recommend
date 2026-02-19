@@ -2,6 +2,7 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>나만의 넷플릭스 추천</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
@@ -25,6 +26,49 @@
       .card-img-top {
         aspect-ratio: 16 / 9;
         object-fit: cover;
+      }
+      .genre-pill {
+        cursor: pointer;
+      }
+      @media (max-width: 575.98px) {
+        body {
+          font-size: 13px;
+        }
+        .navbar .container-fluid {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 10px;
+        }
+        .navbar .d-flex {
+          width: 100%;
+        }
+        .navbar .btn {
+          width: 100%;
+        }
+        #filtersForm .btn {
+          width: 100%;
+        }
+        #filtersForm .btn + .btn {
+          margin-left: 0 !important;
+          margin-top: 8px;
+        }
+        .card-footer {
+          flex-wrap: wrap;
+          gap: 8px !important;
+        }
+        .card-footer .btn,
+        .card-footer form {
+          flex: 1 1 auto;
+        }
+        .card-footer form {
+          width: 100%;
+        }
+        .card-footer form .btn {
+          width: 100%;
+        }
+        .genre-pill {
+          flex: 1 1 auto;
+        }
       }
     </style>
   </head>
@@ -78,7 +122,7 @@
             <div class="d-flex flex-wrap gap-2 mt-2">
               <% allGenres.forEach(function (g) { %>
               <% const checked = selectedGenres && selectedGenres.includes(g); %>
-              <label class="btn btn-sm btn-outline-info" style="cursor: pointer;">
+              <label class="btn btn-sm btn-outline-info genre-pill">
                 <input
                   type="checkbox"
                   class="form-check-input me-1 genre-checkbox"
