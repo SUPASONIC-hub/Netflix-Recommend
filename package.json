@@ -21,16 +21,16 @@
   "license": "MIT",
   "type": "commonjs",
   "dependencies": {
-    "@prisma/client": "^6.2.1",
+    "@prisma/client": "^6.19.2",
     "axios": "^1.13.5",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.3.1",
     "ejs": "^4.0.1",
-    "express": "^5.2.1",
-    "prisma": "^6.2.1"
+    "express": "^5.2.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "nodemon": "^3.1.11",
+    "prisma": "^7.4.1"
   },
   "engines": {
     "node": "20.x"
