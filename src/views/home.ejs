@@ -27,6 +27,22 @@
         aspect-ratio: 16 / 9;
         object-fit: cover;
       }
+      .content-card {
+        cursor: pointer;
+        transition: transform 160ms ease, box-shadow 160ms ease;
+      }
+      .content-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+      }
+      .content-card:focus-visible {
+        outline: 3px solid rgba(13, 110, 253, 0.35);
+        outline-offset: 2px;
+      }
+      .content-card:active {
+        transform: translateY(0) scale(0.99);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+      }
       .genre-pill {
         cursor: pointer;
       }
@@ -184,7 +200,7 @@
       <div class="row row-cols-1 row-cols-md-3 g-4">
         <% contents.forEach(function (c) { %>
         <div class="col">
-          <div class="card h-100">
+          <div class="card h-100 content-card" role="link" tabindex="0" data-href="/content/<%= c.id %>">
             <% const cardImage = c.backdropPath ? 'https://image.tmdb.org/t/p/w780' + c.backdropPath : (c.posterUrl || (c.posterPath ? 'https://image.tmdb.org/t/p/w500' + c.posterPath : '')); %>
             <% if (cardImage) { %>
             <img src="<%= cardImage %>" class="card-img-top" alt="<%= c.title || c.name || '' %>" />
@@ -334,6 +350,29 @@
             recentWrap.style.display = '';
           }
         } catch (e) {}
+      });
+    </script>
+    <script>
+      window.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.content-card').forEach((card) => {
+          const href = card.getAttribute('data-href');
+          if (!href) return;
+
+          card.addEventListener('click', (e) => {
+            if (e.defaultPrevented) return;
+            const interactive = e.target.closest(
+              'a,button,form,input,textarea,select,label,summary'
+            );
+            if (interactive) return;
+            window.location.href = href;
+          });
+
+          card.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            window.location.href = href;
+          });
+        });
       });
     </script>
   </body>
