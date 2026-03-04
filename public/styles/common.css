@@ -15,7 +15,8 @@
   height: 28px;
   object-fit: cover;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
 }
 
 .brand-netflix-logo {
@@ -27,10 +28,15 @@
 .brand-picks {
   font-family: 'Manrope', 'Segoe UI', sans-serif;
   font-weight: 800;
-  font-size: 1.06rem;
+  font-size: 0.95rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #e50914;
+  color: #1f2937;
+  background: linear-gradient(180deg, #fff7f7 0%, #ffecec 100%);
+  border: 1px solid rgba(229, 9, 20, 0.24);
+  border-radius: 999px;
+  padding: 3px 8px;
+  line-height: 1.1;
 }
 
 @media (max-width: 575.98px) {
@@ -43,7 +49,8 @@
     height: 18px;
   }
   .brand-picks {
-    font-size: 0.96rem;
+    font-size: 0.84rem;
+    padding: 2px 7px;
   }
 }
 
