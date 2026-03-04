@@ -7,25 +7,31 @@
 .brand-art {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
-.brand-art img {
-  width: 34px;
-  height: 34px;
-  object-fit: cover;
-  border-radius: 10px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+.brand-netflix-logo {
+  height: 20px;
+  width: auto;
+  display: block;
 }
 
-.brand-art-text {
+.brand-picks {
   font-family: 'Manrope', 'Segoe UI', sans-serif;
   font-weight: 800;
-  font-size: 1.18rem;
-  letter-spacing: 0.03em;
+  font-size: 1.06rem;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: #1f2937;
-  text-shadow: none;
+}
+
+@media (max-width: 575.98px) {
+  .brand-netflix-logo {
+    height: 18px;
+  }
+  .brand-picks {
+    font-size: 0.96rem;
+  }
 }
 
 .comment-bubble-btn {
