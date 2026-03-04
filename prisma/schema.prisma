@@ -29,8 +29,8 @@ model Content {
   myNote       String
   myRating     Float
   tags         String[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(3)
 
   comments     Comment[]
 
@@ -42,7 +42,7 @@ model Comment {
   contentId String
   nickname  String
   text      String
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
 
   content   Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
 

@@ -17,6 +17,7 @@
   function formatAbsoluteLabel(latestTs) {
     if (!latestTs) return '시간 정보 없음';
     return new Date(latestTs).toLocaleString('ko-KR', {
+      timeZone: 'Asia/Seoul',
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',

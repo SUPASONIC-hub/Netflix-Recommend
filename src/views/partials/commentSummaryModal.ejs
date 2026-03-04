@@ -64,7 +64,7 @@
                 <span class="badge text-bg-danger comment-new-badge d-none" data-new-badge></span>
               </span>
               <small class="text-muted comment-latest-at" data-latest-at>
-                최근 댓글: <%= item.latestCommentAt ? new Date(item.latestCommentAt).toLocaleString('ko-KR') : '시간 정보 없음' %>
+                최근 댓글: <%= item.latestCommentAt ? new Date(item.latestCommentAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '시간 정보 없음' %>
               </small>
             </span>
             <span class="badge bg-primary rounded-pill"><%= item.count %></span>
