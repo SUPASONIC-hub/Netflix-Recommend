@@ -46,19 +46,57 @@
       .genre-pill {
         cursor: pointer;
       }
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .comment-bubble-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        min-width: 56px;
+      }
+      .comment-bubble-btn .bubble-icon {
+        font-size: 14px;
+        line-height: 1;
+      }
+      .comment-new-badge {
+        font-size: 10px;
+      }
+      .comment-summary-controls .form-select,
+      .comment-summary-controls .form-control {
+        max-width: 220px;
+      }
       @media (max-width: 575.98px) {
         body {
           font-size: 13px;
         }
         .navbar .container-fluid {
-          flex-direction: column;
-          align-items: stretch;
+          display: grid;
+          grid-template-columns: 1fr auto;
+          align-items: center;
           gap: 10px;
         }
-        .navbar .d-flex {
+        .navbar .navbar-brand {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .comment-bubble-btn {
+          justify-self: end;
+        }
+        .header-actions {
+          grid-column: 1 / -1;
           width: 100%;
         }
-        .navbar .btn {
+        .header-actions .btn {
+          width: 100%;
+        }
+        .comment-summary-controls .form-select,
+        .comment-summary-controls .form-control {
+          max-width: none;
           width: 100%;
         }
         #filtersForm .btn {
@@ -92,7 +130,17 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4 border-bottom">
       <div class="container-fluid">
         <a class="navbar-brand" href="/">넷플릭스 추천</a>
-        <div class="d-flex">
+        <button
+          type="button"
+          class="btn btn-outline-secondary btn-sm comment-bubble-btn"
+          data-bs-toggle="modal"
+          data-bs-target="#commentSummaryModal"
+          aria-label="Open comments summary"
+        >
+          <span class="bubble-icon">&#128172;</span>
+          <span><%= totalCommentCount || 0 %></span>
+        </button>
+        <div class="d-flex header-actions">
           <% if (isAdmin) { %>
           <a href="/admin/new" class="btn btn-primary btn-sm">추천 등록</a>
           <% } else { %>
@@ -261,6 +309,73 @@
       </div>
       <% } %>
     </div>
+    <div
+      class="modal fade"
+      id="commentSummaryModal"
+      tabindex="-1"
+      aria-labelledby="commentSummaryModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="commentSummaryModalLabel">
+              댓글 현황 (<%= totalCommentCount || 0 %>)
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+          </div>
+          <div class="modal-body">
+            <% if (commentSummaryList && commentSummaryList.length) { %>
+            <div class="d-flex flex-wrap gap-2 mb-3 comment-summary-controls">
+              <select id="commentSummarySort" class="form-select form-select-sm">
+                <option value="count">댓글 많은 순</option>
+                <option value="latest">최신 댓글 순</option>
+              </select>
+              <select id="commentFreshHours" class="form-select form-select-sm">
+                <option value="24">새 댓글 기준: 24시간</option>
+                <option value="72">새 댓글 기준: 72시간</option>
+                <option value="168">새 댓글 기준: 7일</option>
+              </select>
+              <select id="commentMinCount" class="form-select form-select-sm">
+                <option value="1">댓글 1개 이상</option>
+                <option value="2">댓글 2개 이상</option>
+                <option value="3">댓글 3개 이상</option>
+              </select>
+              <input
+                type="text"
+                id="commentSummarySearch"
+                class="form-control form-control-sm"
+                placeholder="글 제목 검색"
+              />
+            </div>
+            <div class="list-group" id="commentSummaryList">
+              <% commentSummaryList.forEach(function (item) { %>
+              <a
+                href="/content/<%= item.contentId %>"
+                class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                data-comment-item
+                data-count="<%= item.count %>"
+                data-latest-ts="<%= item.latestCommentAt ? new Date(item.latestCommentAt).getTime() : 0 %>"
+                data-title="<%= item.title %>"
+              >
+                <span class="d-flex align-items-center gap-2">
+                  <span><%= item.title %></span>
+                  <span class="badge text-bg-danger comment-new-badge d-none" data-new-badge></span>
+                </span>
+                <span class="badge bg-primary rounded-pill"><%= item.count %></span>
+              </a>
+              <% }); %>
+            </div>
+            <p id="commentSummaryFilteredEmpty" class="mb-0 mt-2 text-muted d-none">
+              조건에 맞는 글이 없습니다.
+            </p>
+            <% } else { %>
+            <p class="mb-0 text-muted">아직 댓글이 없습니다.</p>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </div>
     <script>
       window.addEventListener('DOMContentLoaded', () => {
         const form = document.getElementById('filtersForm');
@@ -354,6 +469,139 @@
     </script>
     <script>
       window.addEventListener('DOMContentLoaded', () => {
+        const summaryList = document.getElementById('commentSummaryList');
+        const sortSelect = document.getElementById('commentSummarySort');
+        const freshHoursSelect = document.getElementById('commentFreshHours');
+        const minCountSelect = document.getElementById('commentMinCount');
+        const searchInput = document.getElementById('commentSummarySearch');
+        const filteredEmpty = document.getElementById('commentSummaryFilteredEmpty');
+        if (
+          !summaryList ||
+          !sortSelect ||
+          !freshHoursSelect ||
+          !minCountSelect ||
+          !searchInput
+        )
+          return;
+
+        const STORAGE_KEYS = {
+          sort: 'commentSummarySort',
+          freshHours: 'commentSummaryFreshHours',
+          minCount: 'commentSummaryMinCount',
+          search: 'commentSummarySearch',
+        };
+
+        const loadPreferences = () => {
+          try {
+            const savedSort = localStorage.getItem(STORAGE_KEYS.sort);
+            const savedFreshHours = localStorage.getItem(STORAGE_KEYS.freshHours);
+            const savedMinCount = localStorage.getItem(STORAGE_KEYS.minCount);
+            const savedSearch = localStorage.getItem(STORAGE_KEYS.search);
+            if (savedSort) sortSelect.value = savedSort;
+            if (savedFreshHours) freshHoursSelect.value = savedFreshHours;
+            if (savedMinCount) minCountSelect.value = savedMinCount;
+            if (savedSearch) searchInput.value = savedSearch;
+          } catch (e) {}
+        };
+
+        const savePreferences = () => {
+          try {
+            localStorage.setItem(STORAGE_KEYS.sort, sortSelect.value);
+            localStorage.setItem(STORAGE_KEYS.freshHours, freshHoursSelect.value);
+            localStorage.setItem(STORAGE_KEYS.minCount, minCountSelect.value);
+            localStorage.setItem(STORAGE_KEYS.search, searchInput.value.trim());
+          } catch (e) {}
+        };
+
+        const getRelativeLabel = (latestTs, now) => {
+          const elapsedMs = Math.max(0, now - latestTs);
+          const minuteMs = 60 * 1000;
+          const hourMs = 60 * minuteMs;
+          const dayMs = 24 * hourMs;
+          if (elapsedMs < hourMs) {
+            const minutes = Math.max(1, Math.floor(elapsedMs / minuteMs));
+            return `${minutes}\uBD84 \uC804`;
+          }
+          if (elapsedMs < dayMs) {
+            const hours = Math.max(1, Math.floor(elapsedMs / hourMs));
+            return `${hours}\uC2DC\uAC04 \uC804`;
+          }
+          const days = Math.max(1, Math.floor(elapsedMs / dayMs));
+          return `${days}\uC77C \uC804`;
+        };
+
+        const renderSummary = () => {
+          const sortBy = sortSelect.value;
+          const freshHours = Number(freshHoursSelect.value || 24);
+          const minCount = Number(minCountSelect.value || 1);
+          const searchTerm = searchInput.value.trim().toLowerCase();
+          const freshMs = freshHours * 60 * 60 * 1000;
+          const now = Date.now();
+
+          const items = Array.from(summaryList.querySelectorAll('[data-comment-item]'));
+          items.sort((a, b) => {
+            const aCount = Number(a.dataset.count || 0);
+            const bCount = Number(b.dataset.count || 0);
+            const aLatest = Number(a.dataset.latestTs || 0);
+            const bLatest = Number(b.dataset.latestTs || 0);
+
+            if (sortBy === 'latest') {
+              if (bLatest !== aLatest) return bLatest - aLatest;
+              return bCount - aCount;
+            }
+            if (bCount !== aCount) return bCount - aCount;
+            return bLatest - aLatest;
+          });
+
+          items.forEach((item) => {
+            summaryList.appendChild(item);
+            const latestTs = Number(item.dataset.latestTs || 0);
+            const count = Number(item.dataset.count || 0);
+            const titleText = String(item.dataset.title || '').toLowerCase();
+            const badge = item.querySelector('[data-new-badge]');
+            if (!badge) return;
+            const isFresh = latestTs > 0 && now - latestTs <= freshMs;
+            if (isFresh) {
+              badge.textContent = getRelativeLabel(latestTs, now);
+            } else {
+              badge.textContent = '';
+            }
+            badge.classList.toggle('d-none', !isFresh);
+
+            const matchesCount = count >= minCount;
+            const matchesSearch = !searchTerm || titleText.includes(searchTerm);
+            item.classList.toggle('d-none', !(matchesCount && matchesSearch));
+          });
+
+          if (filteredEmpty) {
+            const visibleCount = items.filter((item) => !item.classList.contains('d-none')).length;
+            filteredEmpty.classList.toggle('d-none', visibleCount > 0);
+          }
+        };
+
+        sortSelect.addEventListener('change', () => {
+          savePreferences();
+          renderSummary();
+        });
+        freshHoursSelect.addEventListener('change', () => {
+          savePreferences();
+          renderSummary();
+        });
+        minCountSelect.addEventListener('change', () => {
+          savePreferences();
+          renderSummary();
+        });
+        searchInput.addEventListener('input', () => {
+          savePreferences();
+          renderSummary();
+        });
+
+        loadPreferences();
+        renderSummary();
+      });
+    </script>
+    <script>
+      window.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.content-card').forEach((card) => {
           const href = card.getAttribute('data-href');
           if (!href) return;
@@ -375,5 +623,6 @@
         });
       });
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   </body>
 </html>

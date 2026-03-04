@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const path = require('path');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
@@ -10,7 +11,12 @@ if (process.env.NODE_ENV !== 'production') {
 
 const { prisma } = require('./prisma');
 const { requireAdmin, isAdminMiddleware } = require('./tokenAuth');
-const { searchTmdbContents, resolveGenreNames } = require('./tmdbApi');
+const { buildCommentSummaryList } = require('./utils/commentSummary');
+const {
+  searchTmdbContents,
+  resolveGenreNames,
+  resolveGenreNamesForContents,
+} = require('./tmdbApi');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -58,15 +64,31 @@ app.use(isAdminMiddleware);
 // 내 추천 콘텐츠 목록
 app.get('/', async (req, res) => {
   const contents = await prisma.content.findMany();
-  const contentsWithGenres = await Promise.all(
-    contents.map(async (c) => {
-      const genreNames = await resolveGenreNames(
-        c.genreIds,
-        c.mediaType || c.type
-      );
-      return { ...c, genreNames };
-    })
+  const commentGroups = await prisma.comment.groupBy({
+    by: ['contentId'],
+    _count: { _all: true },
+    _max: { createdAt: true },
+  });
+  const groupedContentIds = commentGroups.map((group) => group.contentId);
+  const groupedContents = groupedContentIds.length
+    ? await prisma.content.findMany({
+        where: {
+          id: { in: groupedContentIds },
+        },
+        select: {
+          id: true,
+          title: true,
+          name: true,
+        },
+      })
+    : [];
+  const contentTitleMap = new Map(
+    groupedContents.map((content) => [
+      content.id,
+      content.title || content.name || '제목 없음',
+    ])
   );
+  const contentsWithGenres = await resolveGenreNamesForContents(contents);
 
   const selectedGenre = typeof req.query.genre === 'string' ? req.query.genre : '';
   const selectedGenres = Array.isArray(req.query.genres)
@@ -125,6 +147,15 @@ app.get('/', async (req, res) => {
     );
   }
 
+  const commentSummaryList = buildCommentSummaryList(
+    commentGroups,
+    contentTitleMap
+  );
+  const totalCommentCount = commentSummaryList.reduce(
+    (sum, item) => sum + item.count,
+    0
+  );
+
   res.render('home', {
     contents: sorted,
     isAdmin: req.isAdmin,
@@ -132,6 +163,8 @@ app.get('/', async (req, res) => {
     selectedGenres: normalizedGenres,
     searchQuery,
     sort,
+    totalCommentCount,
+    commentSummaryList,
   });
 });
 
@@ -166,7 +199,7 @@ app.post('/content/:id/comments', async (req, res) => {
     return res.status(400).send('닉네임과 댓글 내용을 입력해 주세요.');
   }
 
-  const id = Date.now().toString();
+  const id = crypto.randomUUID();
   await prisma.comment.create({
     data: {
       id,
@@ -287,7 +320,7 @@ app.post('/admin/content', requireAdmin, async (req, res) => {
     return res.status(400).send('필수 값이 누락되었습니다.');
   }
 
-  const id = Date.now().toString();
+  const id = crypto.randomUUID();
   const tagList = parseTagList(tags);
   const parsedGenreIds = parseGenreIds(genreIds);
 

@@ -72,6 +72,32 @@ async function resolveGenreNames(genreIds, mediaType) {
   }
 }
 
+async function resolveGenreNamesForContents(contents) {
+  if (!Array.isArray(contents) || contents.length === 0) {
+    return [];
+  }
+  try {
+    const cache = await getGenreMap();
+    return contents.map((content) => {
+      const mediaType = content.mediaType || content.type;
+      const map =
+        mediaType === 'tv'
+          ? cache.tv
+          : mediaType === 'movie'
+          ? cache.movie
+          : null;
+      const genreNames = map
+        ? (Array.isArray(content.genreIds) ? content.genreIds : [])
+            .map((id) => map.get(id))
+            .filter((name) => typeof name === 'string' && name.trim())
+        : [];
+      return { ...content, genreNames };
+    });
+  } catch {
+    return contents.map((content) => ({ ...content, genreNames: [] }));
+  }
+}
+
 async function searchTmdbContents(query) {
   const tmdbKey = getTmdbKey();
   const url = 'https://api.themoviedb.org/3/search/multi';
@@ -123,4 +149,5 @@ async function searchTmdbContents(query) {
 module.exports = {
   searchTmdbContents,
   resolveGenreNames,
+  resolveGenreNamesForContents,
 };
