@@ -40,28 +40,7 @@
       <link href="/styles/common.css" rel="stylesheet" />
 </head>
   <body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4 border-bottom">
-      <div class="container-fluid">
-        <a class="navbar-brand brand-art" href="/">
-          <img class="brand-mascot" src="/assets/brand.png" alt="Brand mascot" />
-          <img class="brand-netflix-logo" src="/assets/netflix-wordmark.svg" alt="Netflix" />
-          <span class="brand-picks">PICKS</span>
-        </a>
-        <div class="d-flex align-items-center gap-2">
-          <button
-            type="button"
-            class="btn btn-outline-secondary btn-sm comment-bubble-btn"
-            data-bs-toggle="modal"
-            data-bs-target="#commentSummaryModal"
-            aria-label="댓글 현황 열기" data-comment-summary-trigger
-          >
-            <span class="bubble-icon">&#128172;</span>
-            <span class="comment-total-count" data-comment-total-count role="status" aria-live="polite" aria-atomic="true"><%= totalCommentCount || 0 %></span>
-          </button>
-          <a href="/admin/login" class="btn btn-primary btn-sm">관리자 로그인</a>
-        </div>
-      </div>
-    </nav>
+    <%- include('partials/siteHeader', { page: 'adminLogin', isAdmin: isAdmin }) %>
 
     <div class="container mt-5" style="max-width: 500px">
       <h1 class="mb-4 text-center">관리자 로그인</h1>

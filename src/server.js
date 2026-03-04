@@ -13,6 +13,11 @@ const { prisma } = require('./prisma');
 const { requireAdmin, isAdminMiddleware } = require('./tokenAuth');
 const { getCommentSummary } = require('./utils/commentSummaryService');
 const {
+  validateCommentInput,
+  validateAdminContentInput,
+  validateAdminContentUpdateInput,
+} = require('./utils/validators');
+const {
   searchTmdbContents,
   resolveGenreNames,
   resolveGenreNamesForContents,
@@ -20,11 +25,39 @@ const {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const COMMENT_SUMMARY_CACHE_TTL_MS = 20 * 1000;
+const COMMENT_SUMMARY_CACHE_TTL_MS = 30 * 1000;
+const LOG_LEVEL = (process.env.LOG_LEVEL || 'info').toLowerCase();
+const SSE_KEEPALIVE_MS = 25 * 1000;
 let commentSummaryCache = {
   expiresAt: 0,
   value: null,
 };
+const commentSummarySubscribers = new Set();
+
+function shouldLog(level) {
+  const order = { error: 0, warn: 1, info: 2, debug: 3 };
+  const current = order[LOG_LEVEL] ?? order.info;
+  return (order[level] ?? order.info) <= current;
+}
+
+function log(level, message, payload) {
+  if (!shouldLog(level)) return;
+  if (payload !== undefined) {
+    console[level](`[${level.toUpperCase()}] ${message}`, payload);
+    return;
+  }
+  console[level](`[${level.toUpperCase()}] ${message}`);
+}
+
+function buildRequestId() {
+  return crypto.randomBytes(8).toString('hex');
+}
+
+function buildSummaryEtag(summary) {
+  const serialized = JSON.stringify(summary);
+  const hash = crypto.createHash('sha1').update(serialized).digest('hex');
+  return `W/"${hash}"`;
+}
 
 function parseTagList(tags) {
   return typeof tags === 'string'
@@ -67,6 +100,23 @@ function invalidateCommentSummaryCache() {
   };
 }
 
+function sendSummaryForSse(res, summary) {
+  res.write(`event: summary\n`);
+  res.write(`data: ${JSON.stringify(summary)}\n\n`);
+}
+
+async function broadcastCommentSummaryUpdate() {
+  if (commentSummarySubscribers.size === 0) return;
+  try {
+    const summary = await getCachedCommentSummary();
+    for (const client of commentSummarySubscribers) {
+      sendSummaryForSse(client, summary);
+    }
+  } catch (error) {
+    log('warn', 'Failed to broadcast comment summary update', error);
+  }
+}
+
 async function getCachedCommentSummary() {
   const now = Date.now();
   if (commentSummaryCache.value && now < commentSummaryCache.expiresAt) {
@@ -90,12 +140,27 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser(process.env.ADMIN_PASSWORD || 'secret'));
 app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use((req, res, next) => {
+  req.requestId = buildRequestId();
+  res.locals.requestId = req.requestId;
+
+  const startedAt = Date.now();
+  res.on('finish', () => {
+    if (req.path.startsWith('/assets/') || req.path.startsWith('/styles/')) return;
+    log(
+      'info',
+      `${req.method} ${req.originalUrl} -> ${res.statusCode} (${Date.now() - startedAt}ms) [${req.requestId}]`
+    );
+  });
+
+  next();
+});
 app.use(isAdminMiddleware);
 app.use(async (req, res, next) => {
   res.locals.totalCommentCount = 0;
   res.locals.commentSummaryList = [];
 
-  if (req.path.startsWith('/api')) {
+  if (req.path.startsWith('/api') || req.path === '/healthz') {
     return next();
   }
 
@@ -185,18 +250,70 @@ app.get('/', async (req, res) => {
   });
 });
 
+app.get('/healthz', async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({
+      status: 'ok',
+      uptimeSec: Math.floor(process.uptime()),
+      requestId: req.requestId,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    log('error', 'Health check failed', error);
+    res.status(503).json({
+      status: 'degraded',
+      requestId: req.requestId,
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
 app.get('/api/comments/summary', async (req, res) => {
   try {
     const summary = await getCachedCommentSummary();
+    const etag = buildSummaryEtag(summary);
+    if (req.headers['if-none-match'] === etag) {
+      return res.status(304).end();
+    }
+    res.setHeader('ETag', etag);
+    res.setHeader('Cache-Control', 'private, max-age=10, must-revalidate');
     res.json(summary);
   } catch (error) {
-    console.error('Failed to fetch comment summary:', error);
+    log('error', 'Failed to fetch comment summary', error);
     res.status(500).json({
       totalCommentCount: 0,
       commentSummaryList: [],
       error: 'failed_to_fetch_comment_summary',
     });
   }
+});
+
+app.get('/api/comments/summary/stream', async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  commentSummarySubscribers.add(res);
+  log('debug', `SSE subscriber connected (${commentSummarySubscribers.size})`);
+
+  try {
+    const summary = await getCachedCommentSummary();
+    sendSummaryForSse(res, summary);
+  } catch (error) {
+    log('warn', 'Failed to send initial SSE summary', error);
+  }
+
+  const keepAliveTimer = setInterval(() => {
+    res.write(': ping\n\n');
+  }, SSE_KEEPALIVE_MS);
+
+  req.on('close', () => {
+    clearInterval(keepAliveTimer);
+    commentSummarySubscribers.delete(res);
+    log('debug', `SSE subscriber disconnected (${commentSummarySubscribers.size})`);
+  });
 });
 
 // 肄섑뀗痢??곸꽭 + ?볤?
@@ -224,10 +341,9 @@ app.get('/content/:id', async (req, res) => {
 // ?볤? ?묒꽦 (濡쒓렇??遺덊븘??
 app.post('/content/:id/comments', async (req, res) => {
   const contentId = req.params.id;
-  const { nickname, text } = req.body;
-
-  if (!text || !nickname) {
-    return res.status(400).send('?됰꽕?꾧낵 ?볤? ?댁슜???낅젰??二쇱꽭??');
+  const validation = validateCommentInput(req.body || {});
+  if (!validation.ok) {
+    return res.status(400).send(validation.error);
   }
 
   const id = crypto.randomUUID();
@@ -235,11 +351,12 @@ app.post('/content/:id/comments', async (req, res) => {
     data: {
       id,
       contentId,
-      nickname,
-      text,
+      nickname: validation.value.nickname,
+      text: validation.value.text,
     },
   });
   invalidateCommentSummaryCache();
+  void broadcastCommentSummaryUpdate();
 
   res.redirect(`/content/${contentId}`);
 });
@@ -325,82 +442,22 @@ app.get('/api/tmdb/search', requireAdmin, async (req, res) => {
 
 // 肄섑뀗痢??깅줉 (愿由ъ옄 ?꾩슜)
 app.post('/admin/content', requireAdmin, async (req, res) => {
-  const {
-    tmdbId,
-    title,
-    name,
-    overview,
-    releaseDate,
-    firstAirDate,
-    posterPath,
-    posterUrl,
-    backdropPath,
-    genreIds,
-    popularity,
-    voteAverage,
-    voteCount,
-    adult,
-    mediaType,
-    year,
-    type,
-    myNote,
-    myRating,
-    tags,
-  } = req.body;
-
-  if (!tmdbId || !(title || name) || !myNote || !myRating) {
-    return res.status(400).send('?꾩닔 媛믪씠 ?꾨씫?섏뿀?듬땲??');
+  const validation = validateAdminContentInput(req.body || {}, parseTagList, parseGenreIds);
+  if (!validation.ok) {
+    return res.status(400).send(validation.error);
   }
+  const payload = validation.value;
 
   const id = crypto.randomUUID();
-  const tagList = parseTagList(tags);
-  const parsedGenreIds = parseGenreIds(genreIds);
 
   await prisma.content.create({
     data: {
       id,
-      tmdbId,
-      title: title || name || '',
-      name: name || '',
-      overview: overview || '',
-      releaseDate: releaseDate || '',
-      firstAirDate: firstAirDate || '',
-      posterPath: posterPath || '',
-      posterUrl: posterUrl || '',
-      backdropPath: backdropPath || '',
-      genreIds: parsedGenreIds,
-      popularity:
-        typeof popularity === 'string' && popularity.trim()
-          ? Number(popularity)
-          : typeof popularity === 'number'
-          ? popularity
-          : null,
-      voteAverage:
-        typeof voteAverage === 'string' && voteAverage.trim()
-          ? Number(voteAverage)
-          : typeof voteAverage === 'number'
-          ? voteAverage
-          : null,
-      voteCount:
-        typeof voteCount === 'string' && voteCount.trim()
-          ? Number(voteCount)
-          : typeof voteCount === 'number'
-          ? voteCount
-          : null,
-      adult:
-        adult === true ||
-        adult === 'true' ||
-        adult === '1' ||
-        adult === 1,
-      mediaType: mediaType || '',
-      year: year || '',
-      type: type || '',
-      myNote,
-      myRating: Number(myRating),
-      tags: tagList,
+      ...payload,
     },
   });
   invalidateCommentSummaryCache();
+  void broadcastCommentSummaryUpdate();
 
   res.redirect('/');
 });
@@ -422,76 +479,17 @@ app.post('/admin/content/:id/edit', requireAdmin, async (req, res) => {
   if (!current) {
     return res.status(404).send('肄섑뀗痢좊? 李얠쓣 ???놁뒿?덈떎.');
   }
-  const {
-    title,
-    name,
-    overview,
-    releaseDate,
-    firstAirDate,
-    posterPath,
-    posterUrl,
-    backdropPath,
-    genreIds,
-    popularity,
-    voteAverage,
-    voteCount,
-    adult,
-    mediaType,
-    year,
-    type,
-    myNote,
-    myRating,
-    tags,
-  } = req.body;
-
-  if (!(title || name) || !myNote || !myRating) {
-    return res.status(400).send('?꾩닔 媛믪씠 ?꾨씫?섏뿀?듬땲??');
+  const validation = validateAdminContentUpdateInput(req.body || {}, parseTagList, parseGenreIds);
+  if (!validation.ok) {
+    return res.status(400).send(validation.error);
   }
 
   await prisma.content.update({
     where: { id },
-    data: {
-      title: title || name || '',
-      name: name || '',
-      overview: overview || '',
-      releaseDate: releaseDate || '',
-      firstAirDate: firstAirDate || '',
-      posterPath: posterPath || '',
-      posterUrl: posterUrl || '',
-      backdropPath: backdropPath || '',
-      genreIds: parseGenreIds(genreIds),
-      popularity:
-        typeof popularity === 'string' && popularity.trim()
-          ? Number(popularity)
-          : typeof popularity === 'number'
-          ? popularity
-          : null,
-      voteAverage:
-        typeof voteAverage === 'string' && voteAverage.trim()
-          ? Number(voteAverage)
-          : typeof voteAverage === 'number'
-          ? voteAverage
-          : null,
-      voteCount:
-        typeof voteCount === 'string' && voteCount.trim()
-          ? Number(voteCount)
-          : typeof voteCount === 'number'
-          ? voteCount
-          : null,
-      adult:
-        adult === true ||
-        adult === 'true' ||
-        adult === '1' ||
-        adult === 1,
-      mediaType: mediaType || '',
-      year: year || '',
-      type: type || '',
-      myNote,
-      myRating: Number(myRating),
-      tags: parseTagList(tags),
-    },
+    data: validation.value,
   });
   invalidateCommentSummaryCache();
+  void broadcastCommentSummaryUpdate();
   res.redirect(`/content/${id}`);
 });
 
@@ -508,16 +506,36 @@ app.post('/admin/content/:id/delete', requireAdmin, async (req, res) => {
     prisma.content.delete({ where: { id } }),
   ]);
   invalidateCommentSummaryCache();
+  void broadcastCommentSummaryUpdate();
 
   res.redirect('/');
 });
 
-app.use((err, req, res, next) => {
-  console.error(`Unhandled error on ${req.method} ${req.originalUrl}:`, err);
+app.use((req, res) => {
   if (req.originalUrl && req.originalUrl.startsWith('/api')) {
-    return res.status(500).json({ error: 'internal_server_error' });
+    return res.status(404).json({ error: 'not_found', requestId: req.requestId });
   }
-  return res.status(500).send('Internal Server Error');
+  return res.status(404).render('error', {
+    title: '페이지를 찾을 수 없습니다',
+    message: '요청한 페이지가 없거나 이동되었습니다.',
+    statusCode: 404,
+    requestId: req.requestId,
+    isAdmin: req.isAdmin,
+  });
+});
+
+app.use((err, req, res, next) => {
+  log('error', `Unhandled error on ${req.method} ${req.originalUrl} [${req.requestId}]`, err);
+  if (req.originalUrl && req.originalUrl.startsWith('/api')) {
+    return res.status(500).json({ error: 'internal_server_error', requestId: req.requestId });
+  }
+  return res.status(500).render('error', {
+    title: '서버 오류가 발생했습니다',
+    message: '잠시 후 다시 시도해 주세요.',
+    statusCode: 500,
+    requestId: req.requestId,
+    isAdmin: req.isAdmin,
+  });
 });
 
 // ?쒕쾭 ?쒖옉

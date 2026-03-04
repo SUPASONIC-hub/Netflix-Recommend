@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "test": "node --test",
     "test:e2e": "node scripts/run-e2e.js",
+    "check:encoding": "node scripts/check-encoding.js",
     "check:templates": "node scripts/check-templates.js",
     "migrate": "npx prisma migrate deploy",
     "migrate:dev": "npx prisma migrate dev",

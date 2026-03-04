@@ -3,6 +3,7 @@
   id="commentSummaryModal"
   tabindex="-1"
   aria-labelledby="commentSummaryModalLabel"
+  aria-describedby="commentSummaryModalDesc"
   aria-hidden="true"
 >
   <div class="modal-dialog modal-dialog-scrollable">
@@ -14,21 +15,29 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
       </div>
       <div class="modal-body">
+        <p id="commentSummaryModalDesc" class="visually-hidden">
+          댓글이 달린 글 목록을 필터링하고 정렬할 수 있습니다.
+        </p>
+        <div id="commentSummaryLiveRegion" class="visually-hidden" aria-live="polite"></div>
         <div class="d-flex flex-wrap gap-2 mb-3 comment-summary-controls">
+          <label for="commentSummarySort" class="visually-hidden">정렬 기준</label>
           <select id="commentSummarySort" class="form-select form-select-sm">
             <option value="count">댓글 많은 순</option>
             <option value="latest">최신 댓글 순</option>
           </select>
+          <label for="commentFreshHours" class="visually-hidden">최신 댓글 기준 시간</label>
           <select id="commentFreshHours" class="form-select form-select-sm">
             <option value="24">새 댓글 기준: 24시간</option>
             <option value="72">새 댓글 기준: 72시간</option>
             <option value="168">새 댓글 기준: 7일</option>
           </select>
+          <label for="commentMinCount" class="visually-hidden">최소 댓글 수</label>
           <select id="commentMinCount" class="form-select form-select-sm">
             <option value="1">댓글 1개 이상</option>
             <option value="2">댓글 2개 이상</option>
             <option value="3">댓글 3개 이상</option>
           </select>
+          <label for="commentSummarySearch" class="visually-hidden">글 제목 검색</label>
           <input
             type="text"
             id="commentSummarySearch"
@@ -39,7 +48,7 @@
             필터 초기화
           </button>
         </div>
-        <div class="list-group" id="commentSummaryList">
+        <div class="list-group" id="commentSummaryList" aria-describedby="commentSummaryModalDesc">
           <% commentSummaryList.forEach(function (item) { %>
           <a
             href="/content/<%= item.contentId %>"

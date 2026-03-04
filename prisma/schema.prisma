@@ -33,6 +33,8 @@ model Content {
   updatedAt    DateTime  @updatedAt
 
   comments     Comment[]
+
+  @@index([createdAt])
 }
 
 model Comment {

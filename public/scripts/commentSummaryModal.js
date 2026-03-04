@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   function getRelativeLabel(latestTs, nowTs) {
     const elapsedMs = Math.max(0, nowTs - latestTs);
     const minuteMs = 60 * 1000;
@@ -28,7 +28,6 @@
 
   function buildItemNode(item) {
     const latestTs = item.latestCommentAt ? new Date(item.latestCommentAt).getTime() : 0;
-
     const anchor = document.createElement('a');
     anchor.href = `/content/${item.contentId}`;
     anchor.className =
@@ -64,7 +63,6 @@
     topLine.appendChild(freshBadge);
     leftWrap.appendChild(topLine);
     leftWrap.appendChild(latestAt);
-
     anchor.appendChild(leftWrap);
     anchor.appendChild(right);
     return anchor;
@@ -85,11 +83,13 @@
     const totalCountEls = document.querySelectorAll('[data-comment-total-count]');
     const triggerEls = document.querySelectorAll('[data-comment-summary-trigger]');
     const titleEl = document.getElementById('commentSummaryModalLabel');
-    let lastTrigger = null;
+    const liveRegion = document.getElementById('commentSummaryLiveRegion');
 
-    if (!summaryList || !sortSelect || !freshHoursSelect || !minCountSelect || !searchInput) {
-      return;
-    }
+    let lastTrigger = null;
+    let eventSource = null;
+    let fallbackTimer = null;
+
+    if (!summaryList || !sortSelect || !freshHoursSelect || !minCountSelect || !searchInput) return;
 
     const STORAGE_KEYS = {
       sort: 'commentSummarySort',
@@ -103,6 +103,30 @@
         trigger.classList.toggle('is-empty', total === 0);
         trigger.classList.toggle('is-active', total >= 10);
       });
+    };
+
+    const announce = (text) => {
+      if (!liveRegion) return;
+      liveRegion.textContent = '';
+      window.setTimeout(() => {
+        liveRegion.textContent = text;
+      }, 40);
+    };
+
+    const applySummaryData = (data) => {
+      const list = Array.isArray(data.commentSummaryList) ? data.commentSummaryList : [];
+      const total = Number(data.totalCommentCount || 0);
+
+      summaryList.innerHTML = '';
+      list.forEach((item) => summaryList.appendChild(buildItemNode(item)));
+
+      totalCountEls.forEach((el) => {
+        el.textContent = String(total);
+      });
+      if (titleEl) titleEl.textContent = `댓글 현황 (${total})`;
+      updateTriggerVisual(total);
+      announce(`댓글 합계 ${total}개`);
+      renderSummary();
     };
 
     const loadPreferences = () => {
@@ -183,37 +207,55 @@
 
       const visibleCount = items.filter((item) => !item.classList.contains('d-none')).length;
       filteredEmpty.classList.toggle('d-none', visibleCount > 0);
-      if (emptyText) {
-        emptyText.classList.toggle('d-none', items.length > 0);
-      }
+      if (emptyText) emptyText.classList.toggle('d-none', items.length > 0);
     };
 
-    const updateModalData = async () => {
+    const fetchSummary = async () => {
       try {
-        const res = await fetch('/api/comments/summary', { headers: { Accept: 'application/json' } });
+        const res = await fetch('/api/comments/summary', {
+          headers: { Accept: 'application/json' },
+          cache: 'no-cache',
+        });
         if (!res.ok) return;
         const data = await res.json();
-        const list = Array.isArray(data.commentSummaryList) ? data.commentSummaryList : [];
-        const total = Number(data.totalCommentCount || 0);
-
-        summaryList.innerHTML = '';
-        list.forEach((item) => summaryList.appendChild(buildItemNode(item)));
-
-        totalCountEls.forEach((el) => {
-          el.textContent = String(total);
-        });
-        updateTriggerVisual(total);
-        if (titleEl) {
-          titleEl.textContent = `댓글 현황 (${total})`;
-        }
-        renderSummary();
+        applySummaryData(data);
       } catch (_) {}
+    };
+
+    const startSse = () => {
+      if (typeof window.EventSource !== 'function') return false;
+      eventSource = new EventSource('/api/comments/summary/stream');
+      eventSource.addEventListener('summary', (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          applySummaryData(data);
+        } catch (_) {}
+      });
+      eventSource.onerror = () => {
+        try {
+          eventSource.close();
+        } catch (_) {}
+        eventSource = null;
+      };
+      return true;
+    };
+
+    const startFallbackPolling = () => {
+      if (fallbackTimer) clearInterval(fallbackTimer);
+      fallbackTimer = setInterval(fetchSummary, 60 * 1000);
     };
 
     triggerEls.forEach((trigger) => {
       trigger.addEventListener('click', () => {
         lastTrigger = trigger;
       });
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.altKey && event.key.toLowerCase() === 'c') {
+        const firstTrigger = triggerEls[0];
+        if (firstTrigger) firstTrigger.click();
+      }
     });
 
     sortSelect.addEventListener('change', () => {
@@ -241,17 +283,22 @@
 
     modalEl.addEventListener('shown.bs.modal', () => {
       searchInput.focus();
-      updateModalData();
+      fetchSummary();
     });
     modalEl.addEventListener('hidden.bs.modal', () => {
-      if (lastTrigger && typeof lastTrigger.focus === 'function') {
-        lastTrigger.focus();
-      }
+      if (lastTrigger && typeof lastTrigger.focus === 'function') lastTrigger.focus();
     });
 
     loadPreferences();
     updateTriggerVisual(Number(totalCountEls[0]?.textContent || 0));
     renderSummary();
+    fetchSummary();
+    if (!startSse()) startFallbackPolling();
+
+    window.addEventListener('beforeunload', () => {
+      if (eventSource) eventSource.close();
+      if (fallbackTimer) clearInterval(fallbackTimer);
+    });
   }
 
   window.addEventListener('DOMContentLoaded', initCommentSummaryModal);

@@ -24,5 +24,8 @@ jobs:
       - name: Template Integrity
         run: npm run check:templates
 
+      - name: Encoding Guard
+        run: npm run check:encoding
+
       - name: Unit Tests
         run: node test/commentSummary.test.js

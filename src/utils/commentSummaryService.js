@@ -1,4 +1,4 @@
-const { buildCommentSummaryList } = require('./commentSummary');
+﻿const { buildCommentSummaryList } = require('./commentSummary');
 
 async function getCommentSummary(prisma) {
   const commentGroups = await prisma.comment.groupBy({
@@ -16,10 +16,7 @@ async function getCommentSummary(prisma) {
     : [];
 
   const contentTitleMap = new Map(
-    groupedContents.map((content) => [
-      content.id,
-      content.title || content.name || '제목 없음',
-    ])
+    groupedContents.map((content) => [content.id, content.title || content.name || '제목 없음'])
   );
 
   const commentSummaryList = buildCommentSummaryList(commentGroups, contentTitleMap);

@@ -1,4 +1,4 @@
-function toTimestamp(value) {
+﻿function toTimestamp(value) {
   return new Date(value || 0).getTime();
 }
 
@@ -20,8 +20,7 @@ function sortCommentSummaryItems(items, sortBy = 'count') {
 }
 
 function buildCommentSummaryList(commentGroups, contentTitleMap) {
-  const titleMap =
-    contentTitleMap instanceof Map ? contentTitleMap : new Map(contentTitleMap);
+  const titleMap = contentTitleMap instanceof Map ? contentTitleMap : new Map(contentTitleMap);
   const groups = Array.isArray(commentGroups) ? commentGroups : [];
   const items = groups.map((group) => ({
     contentId: group.contentId,
@@ -39,26 +38,23 @@ function formatRelativeTimeLabel(latestTs, nowTs = Date.now()) {
   const hourMs = 60 * minuteMs;
   const dayMs = 24 * hourMs;
   const weekMs = 7 * dayMs;
-  if (elapsedMs < 5 * minuteMs) {
-    return '방금 전';
-  }
+
+  if (elapsedMs < 5 * minuteMs) return '방금 전';
   if (elapsedMs < hourMs) {
     const minutes = Math.max(1, Math.floor(elapsedMs / minuteMs));
-    return `${minutes}\uBD84 \uC804`;
+    return `${minutes}분 전`;
   }
   if (elapsedMs < dayMs) {
     const hours = Math.max(1, Math.floor(elapsedMs / hourMs));
-    return `${hours}\uC2DC\uAC04 \uC804`;
+    return `${hours}시간 전`;
   }
-  if (elapsedMs < 2 * dayMs) {
-    return '어제';
-  }
+  if (elapsedMs < 2 * dayMs) return '어제';
   if (elapsedMs < weekMs) {
     const days = Math.max(1, Math.floor(elapsedMs / dayMs));
-    return `${days}\uC77C \uC804`;
+    return `${days}일 전`;
   }
   const weeks = Math.max(1, Math.floor(elapsedMs / weekMs));
-  return `${weeks}\uC8FC \uC804`;
+  return `${weeks}주 전`;
 }
 
 module.exports = {
