@@ -107,23 +107,26 @@
           <img class="brand-netflix-logo" src="/assets/netflix-wordmark.svg" alt="Netflix" />
           <span class="brand-picks">PICKS</span>
         </a>
-        <button
-          type="button"
-          class="btn btn-outline-secondary btn-sm comment-bubble-btn"
-          data-bs-toggle="modal"
-          data-bs-target="#commentSummaryModal"
-          data-comment-summary-trigger
-          aria-label="댓글 현황 열기"
-        >
-          <span class="bubble-icon">&#128172;</span>
-          <span
-            class="comment-total-count"
-            data-comment-total-count
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-          ><%= totalCommentCount || 0 %></span>
-        </button>
+        <div class="d-flex align-items-center gap-2">
+          <button
+            type="button"
+            class="btn btn-outline-secondary btn-sm comment-bubble-btn"
+            data-bs-toggle="modal"
+            data-bs-target="#commentSummaryModal"
+            data-comment-summary-trigger
+            aria-label="댓글 현황 열기"
+          >
+            <span class="bubble-icon">&#128172;</span>
+            <span
+              class="comment-total-count"
+              data-comment-total-count
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            ><%= totalCommentCount || 0 %></span>
+          </button>
+          <a href="/admin/login" class="btn btn-primary btn-sm">관리자 로그인</a>
+        </div>
       </div>
     </nav>
 
