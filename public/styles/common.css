@@ -10,6 +10,14 @@
   gap: 8px;
 }
 
+.brand-mascot {
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
 .brand-netflix-logo {
   height: 20px;
   width: auto;
@@ -22,10 +30,15 @@
   font-size: 1.06rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #1f2937;
+  color: #e50914;
 }
 
 @media (max-width: 575.98px) {
+  .brand-mascot {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+  }
   .brand-netflix-logo {
     height: 18px;
   }
