@@ -1,4 +1,4 @@
-const test = require('node:test');
+﻿const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
@@ -49,13 +49,15 @@ test('sortCommentSummaryItems supports latest sort', () => {
   assert.equal(sorted[1].contentId, 'x');
 });
 
-test('formatRelativeTimeLabel returns minute/hour/day labels', () => {
+test('formatRelativeTimeLabel returns just-now/hour/day/week labels', () => {
   const now = new Date('2026-03-04T12:00:00Z').getTime();
-  const tenMinutesAgo = now - 10 * 60 * 1000;
+  const twoMinutesAgo = now - 2 * 60 * 1000;
   const fiveHoursAgo = now - 5 * 60 * 60 * 1000;
-  const threeDaysAgo = now - 3 * 24 * 60 * 60 * 1000;
+  const oneDayAgo = now - 24 * 60 * 60 * 1000;
+  const fourteenDaysAgo = now - 14 * 24 * 60 * 60 * 1000;
 
-  assert.equal(formatRelativeTimeLabel(tenMinutesAgo, now), '10분 전');
-  assert.equal(formatRelativeTimeLabel(fiveHoursAgo, now), '5시간 전');
-  assert.equal(formatRelativeTimeLabel(threeDaysAgo, now), '3일 전');
+  assert.equal(formatRelativeTimeLabel(twoMinutesAgo, now), '\uBC29\uAE08 \uC804');
+  assert.equal(formatRelativeTimeLabel(fiveHoursAgo, now), '5\uC2DC\uAC04 \uC804');
+  assert.equal(formatRelativeTimeLabel(oneDayAgo, now), '\uC5B4\uC81C');
+  assert.equal(formatRelativeTimeLabel(fourteenDaysAgo, now), '2\uC8FC \uC804');
 });

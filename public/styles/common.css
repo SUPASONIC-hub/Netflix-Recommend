@@ -1,0 +1,56 @@
+.navbar-brand {
+  font-weight: 700;
+}
+
+.brand-art {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-art img {
+  width: 34px;
+  height: 34px;
+  object-fit: cover;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+}
+
+.brand-art-text {
+  letter-spacing: 0.2px;
+  background: linear-gradient(90deg, #111827 0%, #0ea5e9 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+.comment-bubble-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 56px;
+}
+
+.comment-bubble-btn .bubble-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.comment-new-badge {
+  font-size: 10px;
+}
+
+.comment-summary-controls .form-select,
+.comment-summary-controls .form-control {
+  max-width: 220px;
+}
+
+@media (max-width: 575.98px) {
+  .comment-summary-controls .form-select,
+  .comment-summary-controls .form-control {
+    max-width: none;
+    width: 100%;
+  }
+}

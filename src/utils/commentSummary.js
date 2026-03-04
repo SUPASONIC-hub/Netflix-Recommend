@@ -38,6 +38,10 @@ function formatRelativeTimeLabel(latestTs, nowTs = Date.now()) {
   const minuteMs = 60 * 1000;
   const hourMs = 60 * minuteMs;
   const dayMs = 24 * hourMs;
+  const weekMs = 7 * dayMs;
+  if (elapsedMs < 5 * minuteMs) {
+    return '방금 전';
+  }
   if (elapsedMs < hourMs) {
     const minutes = Math.max(1, Math.floor(elapsedMs / minuteMs));
     return `${minutes}\uBD84 \uC804`;
@@ -46,8 +50,15 @@ function formatRelativeTimeLabel(latestTs, nowTs = Date.now()) {
     const hours = Math.max(1, Math.floor(elapsedMs / hourMs));
     return `${hours}\uC2DC\uAC04 \uC804`;
   }
-  const days = Math.max(1, Math.floor(elapsedMs / dayMs));
-  return `${days}\uC77C \uC804`;
+  if (elapsedMs < 2 * dayMs) {
+    return '어제';
+  }
+  if (elapsedMs < weekMs) {
+    const days = Math.max(1, Math.floor(elapsedMs / dayMs));
+    return `${days}\uC77C \uC804`;
+  }
+  const weeks = Math.max(1, Math.floor(elapsedMs / weekMs));
+  return `${weeks}\uC8FC \uC804`;
 }
 
 module.exports = {

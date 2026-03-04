@@ -1,9 +1,13 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>추천 수정</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/brand-32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/assets/brand-48.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/brand-180.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <title>異붿쿇 ?섏젙</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -20,10 +24,7 @@
         background-color: #ffffff;
         color: #212529;
       }
-      .navbar-brand {
-        font-weight: 700;
-      }
-      @media (max-width: 575.98px) {
+@media (max-width: 575.98px) {
         body {
           font-size: 13px;
         }
@@ -44,24 +45,39 @@
         }
       }
     </style>
-  </head>
+      <link href="/styles/common.css" rel="stylesheet" />
+</head>
   <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4 border-bottom">
       <div class="container-fluid">
-        <a class="navbar-brand" href="/">넷플릭스 추천</a>
+        <a class="navbar-brand brand-art" href="/">
+          <img src="/assets/brand.png" alt="釉뚮옖???대?吏" />
+          <span class="brand-art-text">?룻뵆由?뒪 異붿쿇</span>
+        </a>
+        <button
+          type="button"
+          class="btn btn-outline-secondary btn-sm comment-bubble-btn"
+          data-bs-toggle="modal"
+          data-bs-target="#commentSummaryModal"
+          aria-label="댓글 현황 열기" data-comment-summary-trigger
+        >
+          <span class="bubble-icon">&#128172;</span>
+          <span data-comment-total-count><%= totalCommentCount || 0 %></span>
+        </button>
+
         <div class="d-flex gap-2">
-          <a href="/admin/new" class="btn btn-primary btn-sm">추천 등록</a>
-          <a href="/content/<%= content.id %>" class="btn btn-outline-secondary btn-sm">상세로</a>
+          <a href="/admin/new" class="btn btn-primary btn-sm">異붿쿇 ?깅줉</a>
+          <a href="/content/<%= content.id %>" class="btn btn-outline-secondary btn-sm">?곸꽭濡?</a>
         </div>
       </div>
     </nav>
 
     <div class="container mb-5">
-      <h1 class="mb-3">추천 수정</h1>
+      <h1 class="mb-3">異붿쿇 ?섏젙</h1>
       <form method="post" action="/admin/content/<%= content.id %>/edit">
         <div class="row g-3">
           <div class="col-md-6">
-            <label class="form-label">제목</label>
+            <label class="form-label">?쒕ぉ</label>
             <input
               type="text"
               name="title"
@@ -71,7 +87,7 @@
             />
           </div>
           <div class="col-md-6">
-            <label class="form-label">이름(name)</label>
+            <label class="form-label">?대쫫(name)</label>
             <input
               type="text"
               name="name"
@@ -80,19 +96,19 @@
             />
           </div>
           <div class="col-12">
-            <label class="form-label">개요</label>
+            <label class="form-label">媛쒖슂</label>
             <textarea name="overview" class="form-control" rows="3"><%= content.overview || '' %></textarea>
           </div>
           <div class="col-md-4">
-            <label class="form-label">연도</label>
+            <label class="form-label">?곕룄</label>
             <input type="text" name="year" class="form-control" value="<%= content.year || '' %>" />
           </div>
           <div class="col-md-4">
-            <label class="form-label">타입(type)</label>
+            <label class="form-label">???type)</label>
             <input type="text" name="type" class="form-control" value="<%= content.type || '' %>" />
           </div>
           <div class="col-md-4">
-            <label class="form-label">미디어 타입(mediaType)</label>
+            <label class="form-label">誘몃뵒?????mediaType)</label>
             <input
               type="text"
               name="mediaType"
@@ -101,7 +117,7 @@
             />
           </div>
           <div class="col-md-6">
-            <label class="form-label">공개일(releaseDate)</label>
+            <label class="form-label">怨듦컻??releaseDate)</label>
             <input
               type="text"
               name="releaseDate"
@@ -110,7 +126,7 @@
             />
           </div>
           <div class="col-md-6">
-            <label class="form-label">방영일(firstAirDate)</label>
+            <label class="form-label">諛⑹쁺??firstAirDate)</label>
             <input
               type="text"
               name="firstAirDate"
@@ -146,7 +162,7 @@
             />
           </div>
           <div class="col-md-4">
-            <label class="form-label">genreIds (JSON 또는 쉼표)</label>
+            <label class="form-label">genreIds (JSON ?먮뒗 ?쇳몴)</label>
             <input
               type="text"
               name="genreIds"
@@ -189,11 +205,11 @@
             </select>
           </div>
           <div class="col-12">
-            <label class="form-label">내 감상평</label>
+            <label class="form-label">??媛먯긽??</label>
             <textarea name="myNote" class="form-control" rows="4" required><%= content.myNote || '' %></textarea>
           </div>
           <div class="col-md-4">
-            <label class="form-label">내 평점 (0.5~5)</label>
+            <label class="form-label">???됱젏 (0.5~5)</label>
             <input
               type="number"
               step="0.5"
@@ -206,7 +222,7 @@
             />
           </div>
           <div class="col-md-8">
-            <label class="form-label">태그 (쉼표 구분)</label>
+            <label class="form-label">?쒓렇 (?쇳몴 援щ텇)</label>
             <input
               type="text"
               name="tags"
@@ -217,10 +233,18 @@
         </div>
 
         <div class="mt-4 d-flex gap-2">
-          <button type="submit" class="btn btn-primary">수정 저장</button>
-          <a href="/content/<%= content.id %>" class="btn btn-outline-secondary">취소</a>
+          <button type="submit" class="btn btn-primary">?섏젙 ???</button>
+          <a href="/content/<%= content.id %>" class="btn btn-outline-secondary">痍⑥냼</a>
         </div>
       </form>
     </div>
+      <%- include('partials/commentSummaryModal') %>
+      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   </body>
 </html>
+
+
+
+
+
+

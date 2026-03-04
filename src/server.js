@@ -1,17 +1,17 @@
-const express = require('express');
+﻿const express = require('express');
 const crypto = require('crypto');
 const path = require('path');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
 
-// 환경변수 로드
+// ?섍꼍蹂??濡쒕뱶
 if (process.env.NODE_ENV !== 'production') {
   dotenv.config();
 }
 
 const { prisma } = require('./prisma');
 const { requireAdmin, isAdminMiddleware } = require('./tokenAuth');
-const { buildCommentSummaryList } = require('./utils/commentSummary');
+const { getCommentSummary } = require('./utils/commentSummaryService');
 const {
   searchTmdbContents,
   resolveGenreNames,
@@ -50,44 +50,38 @@ function parseGenreIds(genreIds) {
   return parsedGenreIds;
 }
 
-// 뷰 엔진 설정 (EJS)
+// 酉??붿쭊 ?ㅼ젙 (EJS)
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
-// 공통 미들웨어
+// 怨듯넻 誘몃뱾?⑥뼱
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser(process.env.ADMIN_PASSWORD || 'secret'));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use(isAdminMiddleware);
+app.use(async (req, res, next) => {
+  res.locals.totalCommentCount = 0;
+  res.locals.commentSummaryList = [];
 
-// 내 추천 콘텐츠 목록
+  if (req.path.startsWith('/api')) {
+    return next();
+  }
+
+  try {
+    const summary = await getCommentSummary(prisma);
+    res.locals.commentSummaryList = summary.commentSummaryList;
+    res.locals.totalCommentCount = summary.totalCommentCount;
+  } catch (error) {
+    console.error('Failed to build comment summary locals:', error);
+  }
+
+  next();
+});
+
+// ??異붿쿇 肄섑뀗痢?紐⑸줉
 app.get('/', async (req, res) => {
   const contents = await prisma.content.findMany();
-  const commentGroups = await prisma.comment.groupBy({
-    by: ['contentId'],
-    _count: { _all: true },
-    _max: { createdAt: true },
-  });
-  const groupedContentIds = commentGroups.map((group) => group.contentId);
-  const groupedContents = groupedContentIds.length
-    ? await prisma.content.findMany({
-        where: {
-          id: { in: groupedContentIds },
-        },
-        select: {
-          id: true,
-          title: true,
-          name: true,
-        },
-      })
-    : [];
-  const contentTitleMap = new Map(
-    groupedContents.map((content) => [
-      content.id,
-      content.title || content.name || '제목 없음',
-    ])
-  );
   const contentsWithGenres = await resolveGenreNamesForContents(contents);
 
   const selectedGenre = typeof req.query.genre === 'string' ? req.query.genre : '';
@@ -147,14 +141,6 @@ app.get('/', async (req, res) => {
     );
   }
 
-  const commentSummaryList = buildCommentSummaryList(
-    commentGroups,
-    contentTitleMap
-  );
-  const totalCommentCount = commentSummaryList.reduce(
-    (sum, item) => sum + item.count,
-    0
-  );
 
   res.render('home', {
     contents: sorted,
@@ -163,17 +149,31 @@ app.get('/', async (req, res) => {
     selectedGenres: normalizedGenres,
     searchQuery,
     sort,
-    totalCommentCount,
-    commentSummaryList,
+    totalCommentCount: res.locals.totalCommentCount,
+    commentSummaryList: res.locals.commentSummaryList,
   });
 });
 
-// 콘텐츠 상세 + 댓글
+app.get('/api/comments/summary', async (req, res) => {
+  try {
+    const summary = await getCommentSummary(prisma);
+    res.json(summary);
+  } catch (error) {
+    console.error('Failed to fetch comment summary:', error);
+    res.status(500).json({
+      totalCommentCount: 0,
+      commentSummaryList: [],
+      error: 'failed_to_fetch_comment_summary',
+    });
+  }
+});
+
+// 肄섑뀗痢??곸꽭 + ?볤?
 app.get('/content/:id', async (req, res) => {
   const id = req.params.id;
   const content = await prisma.content.findUnique({ where: { id } });
   if (!content) {
-    return res.status(404).send('콘텐츠를 찾을 수 없습니다.');
+    return res.status(404).send('肄섑뀗痢좊? 李얠쓣 ???놁뒿?덈떎.');
   }
   const genreNames = await resolveGenreNames(
     content.genreIds,
@@ -190,13 +190,13 @@ app.get('/content/:id', async (req, res) => {
   });
 });
 
-// 댓글 작성 (로그인 불필요)
+// ?볤? ?묒꽦 (濡쒓렇??遺덊븘??
 app.post('/content/:id/comments', async (req, res) => {
   const contentId = req.params.id;
   const { nickname, text } = req.body;
 
   if (!text || !nickname) {
-    return res.status(400).send('닉네임과 댓글 내용을 입력해 주세요.');
+    return res.status(400).send('?됰꽕?꾧낵 ?볤? ?댁슜???낅젰??二쇱꽭??');
   }
 
   const id = crypto.randomUUID();
@@ -212,18 +212,18 @@ app.post('/content/:id/comments', async (req, res) => {
   res.redirect(`/content/${contentId}`);
 });
 
-// 관리자 로그인 페이지
+// 愿由ъ옄 濡쒓렇???섏씠吏
 app.get('/admin/login', (req, res) => {
   res.render('adminLogin', { isAdmin: req.isAdmin, error: null });
 });
 
-// 관리자 로그인 처리
+// 愿由ъ옄 濡쒓렇??泥섎━
 app.post('/admin/login', (req, res) => {
   const { password } = req.body;
   const adminPassword = process.env.ADMIN_PASSWORD;
 
   if (!adminPassword) {
-    return res.status(500).send('ADMIN_PASSWORD 환경 변수를 설정해 주세요.');
+    return res.status(500).send('ADMIN_PASSWORD ?섍꼍 蹂?섎? ?ㅼ젙??二쇱꽭??');
   }
 
   if (password === adminPassword) {
@@ -236,11 +236,11 @@ app.post('/admin/login', (req, res) => {
 
   res.status(401).render('adminLogin', {
     isAdmin: false,
-    error: '비밀번호가 일치하지 않습니다.',
+    error: '鍮꾨?踰덊샇媛 ?쇱튂?섏? ?딆뒿?덈떎.',
   });
 });
 
-// 관리자: 추천 콘텐츠 등록 페이지
+// 愿由ъ옄: 異붿쿇 肄섑뀗痢??깅줉 ?섏씠吏
 app.get('/admin/new', requireAdmin, async (req, res) => {
   const manageQuery =
     typeof req.query.manageQ === 'string' ? req.query.manageQ.trim() : '';
@@ -270,28 +270,28 @@ app.get('/admin/new', requireAdmin, async (req, res) => {
   res.render('adminNew', { isAdmin: true, contents, manageQuery, manageSort });
 });
 
-// TMDB 검색 API (관리자 전용)
+// TMDB 寃??API (愿由ъ옄 ?꾩슜)
 app.get('/api/tmdb/search', requireAdmin, async (req, res) => {
   const query = req.query.q;
   if (!query) {
-    return res.status(400).json({ error: 'q 쿼리 파라미터가 필요합니다.' });
+    return res.status(400).json({ error: 'q 荑쇰━ ?뚮씪誘명꽣媛 ?꾩슂?⑸땲??' });
   }
 
   try {
     const results = await searchTmdbContents(query);
     res.json(results);
   } catch (err) {
-    // TMDB에서 내려온 에러 메시지를 최대한 그대로 전달
-    console.error('TMDB 검색 오류:', err.response?.data || err.message);
+    // TMDB?먯꽌 ?대젮???먮윭 硫붿떆吏瑜?理쒕???洹몃?濡??꾨떖
+    console.error('TMDB 寃???ㅻ쪟:', err.response?.data || err.message);
     const apiErrorMessage = err.response?.data?.errorMessage;
     res.status(500).json({
       error:
-        apiErrorMessage || 'TMDB 검색 중 오류가 발생했습니다. (서버 로그를 확인해 주세요.)',
+        apiErrorMessage || 'TMDB 寃??以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎. (?쒕쾭 濡쒓렇瑜??뺤씤??二쇱꽭??)',
     });
   }
 });
 
-// 콘텐츠 등록 (관리자 전용)
+// 肄섑뀗痢??깅줉 (愿由ъ옄 ?꾩슜)
 app.post('/admin/content', requireAdmin, async (req, res) => {
   const {
     tmdbId,
@@ -317,7 +317,7 @@ app.post('/admin/content', requireAdmin, async (req, res) => {
   } = req.body;
 
   if (!tmdbId || !(title || name) || !myNote || !myRating) {
-    return res.status(400).send('필수 값이 누락되었습니다.');
+    return res.status(400).send('?꾩닔 媛믪씠 ?꾨씫?섏뿀?듬땲??');
   }
 
   const id = crypto.randomUUID();
@@ -372,22 +372,22 @@ app.post('/admin/content', requireAdmin, async (req, res) => {
   res.redirect('/');
 });
 
-// 관리자: 추천 콘텐츠 수정 페이지
+// 愿由ъ옄: 異붿쿇 肄섑뀗痢??섏젙 ?섏씠吏
 app.get('/admin/content/:id/edit', requireAdmin, async (req, res) => {
   const { id } = req.params;
   const content = await prisma.content.findUnique({ where: { id } });
   if (!content) {
-    return res.status(404).send('콘텐츠를 찾을 수 없습니다.');
+    return res.status(404).send('肄섑뀗痢좊? 李얠쓣 ???놁뒿?덈떎.');
   }
   res.render('adminEdit', { isAdmin: true, content });
 });
 
-// 관리자: 추천 콘텐츠 수정
+// 愿由ъ옄: 異붿쿇 肄섑뀗痢??섏젙
 app.post('/admin/content/:id/edit', requireAdmin, async (req, res) => {
   const { id } = req.params;
   const current = await prisma.content.findUnique({ where: { id } });
   if (!current) {
-    return res.status(404).send('콘텐츠를 찾을 수 없습니다.');
+    return res.status(404).send('肄섑뀗痢좊? 李얠쓣 ???놁뒿?덈떎.');
   }
   const {
     title,
@@ -412,7 +412,7 @@ app.post('/admin/content/:id/edit', requireAdmin, async (req, res) => {
   } = req.body;
 
   if (!(title || name) || !myNote || !myRating) {
-    return res.status(400).send('필수 값이 누락되었습니다.');
+    return res.status(400).send('?꾩닔 媛믪씠 ?꾨씫?섏뿀?듬땲??');
   }
 
   await prisma.content.update({
@@ -461,12 +461,12 @@ app.post('/admin/content/:id/edit', requireAdmin, async (req, res) => {
   res.redirect(`/content/${id}`);
 });
 
-// 관리자: 추천 콘텐츠 삭제
+// 愿由ъ옄: 異붿쿇 肄섑뀗痢???젣
 app.post('/admin/content/:id/delete', requireAdmin, async (req, res) => {
   const { id } = req.params;
   const content = await prisma.content.findUnique({ where: { id } });
   if (!content) {
-    return res.status(404).send('콘텐츠를 찾을 수 없습니다.');
+    return res.status(404).send('肄섑뀗痢좊? 李얠쓣 ???놁뒿?덈떎.');
   }
 
   await prisma.$transaction([
@@ -477,7 +477,7 @@ app.post('/admin/content/:id/delete', requireAdmin, async (req, res) => {
   res.redirect('/');
 });
 
-// 서버 시작
+// ?쒕쾭 ?쒖옉
 prisma
   .$connect()
   .then(() => {
@@ -494,3 +494,4 @@ process.on('SIGINT', async () => {
   await prisma.$disconnect();
   process.exit(0);
 });
+

@@ -1,9 +1,13 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title><%= content.title %> - 추천 상세</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/brand-32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/assets/brand-48.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/brand-180.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <title><%= content.title %> - 異붿쿇 ?곸꽭</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -20,10 +24,7 @@
         background-color: #ffffff;
         color: #212529;
       }
-      .navbar-brand {
-        font-weight: 700;
-      }
-      .detail-body-text {
+.detail-body-text {
         font-size: 1.1rem;
         line-height: 1.7;
         white-space: pre-wrap;
@@ -121,11 +122,26 @@
         }
       }
     </style>
-  </head>
+      <link href="/styles/common.css" rel="stylesheet" />
+</head>
   <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4 border-bottom">
       <div class="container-fluid">
-        <a class="navbar-brand" href="/">넷플릭스 추천</a>
+        <a class="navbar-brand brand-art" href="/">
+          <img src="/assets/brand.png" alt="釉뚮옖???대?吏" />
+          <span class="brand-art-text">?룻뵆由?뒪 異붿쿇</span>
+        </a>
+        <button
+          type="button"
+          class="btn btn-outline-secondary btn-sm comment-bubble-btn"
+          data-bs-toggle="modal"
+          data-bs-target="#commentSummaryModal"
+          aria-label="댓글 현황 열기" data-comment-summary-trigger
+        >
+          <span class="bubble-icon">&#128172;</span>
+          <span data-comment-total-count><%= totalCommentCount || 0 %></span>
+        </button>
+
       </div>
     </nav>
 
@@ -155,28 +171,28 @@
           <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
             <h1 class="mb-0"><%= content.title || content.name || '' %></h1>
             <% if (isAdmin) { %>
-            <a href="/admin/content/<%= content.id %>/edit" class="btn btn-sm btn-outline-secondary">수정</a>
+            <a href="/admin/content/<%= content.id %>/edit" class="btn btn-sm btn-outline-secondary">?섏젙</a>
             <form
               method="post"
               action="/admin/content/<%= content.id %>/delete"
-              onsubmit="return confirm('이 추천을 삭제할까요?');"
+              onsubmit="return confirm('??異붿쿇????젣?좉퉴??');"
               class="d-inline"
             >
-              <button type="submit" class="btn btn-sm btn-outline-danger">삭제</button>
+              <button type="submit" class="btn btn-sm btn-outline-danger">??젣</button>
             </form>
             <% } %>
           </div>
           <p class="text-muted">
-            <%= content.year || content.pubDate || '' %> · <%= content.type || '콘텐츠' %>
+            <%= content.year || content.pubDate || '' %> 쨌 <%= content.type || '肄섑뀗痢? %>
           </p>
           <% const ratingValue = typeof content.myRating === 'number' ? content.myRating : (parseFloat(content.myRating) || 0); %>
           <div class="info-box info-box--rating rating-box mb-3">
-            <h4>SUPASONIC의 평점</h4>
+            <h4>SUPASONIC???됱젏</h4>
             <div class="rating-score">
               <span class="rating-number"><%= ratingValue %></span>
               <span class="rating-max">/ 5</span>
             </div>
-            <div class="rating-stars" aria-label="SUPASONIC의 평점 <%= ratingValue %>점">
+            <div class="rating-stars" aria-label="SUPASONIC???됱젏 <%= ratingValue %>??>
               <% for (let i = 1; i <= 5; i++) { %>
               <% const fill = Math.max(0, Math.min(1, ratingValue - (i - 1))) * 100; %>
               <span class="star" style="--fill: <%= fill %>%">&#9733;</span>
@@ -184,46 +200,46 @@
             </div>
           </div>
           <div class="info-box info-box--note mb-4">
-            <h4>나의 감상</h4>
+            <h4>?섏쓽 媛먯긽</h4>
             <p class="detail-body-text mb-0"><%= content.myNote %></p>
           </div>
           <% if (content.overview) { %>
           <div class="info-box info-box--overview mb-3">
-            <h4>영화 내용</h4>
+            <h4>?곹솕 ?댁슜</h4>
             <p class="detail-body-text mb-0"><%= content.overview %></p>
           </div>
           <% } %>
 <ul class="list-unstyled">
             <% if (content.releaseDate || content.firstAirDate) { %>
             <li>
-              <strong>공개일시:</strong>
+              <strong>怨듦컻?쇱떆:</strong>
               <%= content.releaseDate || content.firstAirDate %>
             </li>
             <% } %>
             <% if (typeof content.popularity === 'number') { %>
-            <li><strong>인기지표:</strong> <%= content.popularity %></li>
+            <li><strong>?멸린吏??</strong> <%= content.popularity %></li>
             <% } %>
             <% if (typeof content.voteAverage === 'number') { %>
-            <li><strong>TMDB 평점:</strong> <%= content.voteAverage %></li>
+            <li><strong>TMDB ?됱젏:</strong> <%= content.voteAverage %></li>
             <% } %>
             <% if (typeof content.voteCount === 'number') { %>
-            <li><strong>TMDB 투표 수:</strong> <%= content.voteCount %></li>
+            <li><strong>TMDB ?ы몴 ??</strong> <%= content.voteCount %></li>
             <% } %>
             <% if (typeof content.adult === 'boolean') { %>
-            <li><strong>성인물 여부:</strong> <%= content.adult ? '예' : '아니오' %></li>
+            <li><strong>?깆씤臾??щ?:</strong> <%= content.adult ? '?? : '?꾨땲?? %></li>
             <% } %>
             <% if (content.mediaType) { %>
-            <li><strong>멀티검색결과 타입:</strong> <%= content.mediaType %></li>
+            <li><strong>硫?곌??됯껐怨????</strong> <%= content.mediaType %></li>
             <% } %>
             <% if (Array.isArray(content.genreNames) && content.genreNames.length) { %>
-            <li><strong>장르:</strong> <%= content.genreNames.join(', ') %></li>
+            <li><strong>?λⅤ:</strong> <%= content.genreNames.join(', ') %></li>
             <% } else if (Array.isArray(content.genreIds) && content.genreIds.length) { %>
-            <li><strong>장르:</strong> <%= content.genreIds.join(', ') %></li>
+            <li><strong>?λⅤ:</strong> <%= content.genreIds.join(', ') %></li>
             <% } %>
           </ul>
           <% if (content.tags && content.tags.length) { %>
           <p>
-            태그:
+            ?쒓렇:
             <% content.tags.forEach(function (t) { %>
             <span class="badge bg-info text-dark"><%= t %></span>
             <% }); %>
@@ -235,9 +251,9 @@
       <hr class="border-secondary" />
 
       <div class="mb-4">
-        <h3>댓글</h3>
+        <h3>?볤?</h3>
         <% if (!comments || comments.length === 0) { %>
-        <p>아직 댓글이 없습니다. 첫 댓글을 남겨보세요.</p>
+        <p>?꾩쭅 ?볤????놁뒿?덈떎. 泥??볤????④꺼蹂댁꽭??</p>
         <% } else { %>
         <ul class="list-group">
           <% comments.forEach(function (cm) { %>
@@ -254,19 +270,27 @@
       </div>
 
       <div class="mb-5">
-        <h4>댓글 남기기 (로그인 불필요)</h4>
+        <h4>?볤? ?④린湲?(濡쒓렇??遺덊븘??</h4>
         <form method="post" action="/content/<%= content.id %>/comments">
           <div class="mb-3">
-            <label class="form-label">닉네임</label>
+            <label class="form-label">?됰꽕??</label>
             <input type="text" name="nickname" class="form-control" required />
           </div>
           <div class="mb-3">
-            <label class="form-label">내용</label>
+            <label class="form-label">?댁슜</label>
             <textarea name="text" class="form-control" rows="3" required></textarea>
           </div>
-          <button type="submit" class="btn btn-primary">댓글 등록</button>
+          <button type="submit" class="btn btn-primary">?볤? ?깅줉</button>
         </form>
       </div>
     </div>
+      <%- include('partials/commentSummaryModal') %>
+      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   </body>
 </html>
+
+
+
+
+
+

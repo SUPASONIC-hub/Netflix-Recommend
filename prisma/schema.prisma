@@ -43,4 +43,6 @@ model Comment {
   createdAt DateTime @default(now())
 
   content   Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@index([contentId, createdAt])
 }
