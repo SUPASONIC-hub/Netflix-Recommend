@@ -10,7 +10,7 @@
     <link rel="shortcut icon" href="/favicon.ico" />
     <link rel="mask-icon" href="/assets/netflix-wordmark.svg" color="#e50914" />
     <meta name="theme-color" content="#101418" />
-    <title><%= content.title %> - 異붿쿇 ?곸꽭</title>
+    <title><%= content.title || content.name || 'Detail' %> - Detail</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -19,6 +19,7 @@
       href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700&display=swap"
       rel="stylesheet"
     />
+    <link href="/styles/common.css" rel="stylesheet" />
     <style>
       body {
         font-family: 'Nanum Gothic', system-ui, -apple-system, BlinkMacSystemFont,
@@ -27,17 +28,17 @@
         background-color: #ffffff;
         color: #212529;
       }
-.detail-body-text {
-        font-size: 1.1rem;
+      .detail-body-text {
+        font-size: 1.08rem;
         line-height: 1.7;
         white-space: pre-wrap;
         overflow-wrap: anywhere;
       }
       .info-box {
-        border: 1px solid #9ec5fe;
+        border: 1px solid #cfe2ff;
         border-radius: 12px;
         padding: 16px;
-        background: #e7f1ff;
+        background: #f8fbff;
       }
       .info-box h4 {
         font-size: 1rem;
@@ -45,25 +46,9 @@
         font-weight: 700;
         color: #0b5ed7;
       }
-      .info-box--rating {
-        background: #d7ebff;
-        border-color: #6ea8fe;
-      }
-      .info-box--note {
-        background: #eaf4ff;
-        border-color: #9ec5fe;
-        padding: 18px;
-      }
-      .info-box--overview {
-        background: #f0f7ff;
-        border-color: #b6d4fe;
-        padding: 20px;
-      }
       .rating-box {
-        padding: 16px 18px;
-        background: #cfe2ff;
-        border-color: #4c8ef7;
-        box-shadow: 0 8px 18px rgba(11, 94, 215, 0.15);
+        background: #eef5ff;
+        border-color: #b6d4fe;
       }
       .rating-score {
         display: flex;
@@ -73,22 +58,22 @@
         color: #0b5ed7;
       }
       .rating-number {
-        font-size: 2.4rem;
+        font-size: 2.3rem;
         line-height: 1;
       }
       .rating-max {
-        font-size: 1.3rem;
+        font-size: 1.2rem;
         opacity: 0.85;
       }
       .rating-stars {
         margin-top: 8px;
-        font-size: 1.7rem;
+        font-size: 1.6rem;
         letter-spacing: 2px;
       }
       .star {
         position: relative;
         display: inline-block;
-        color: #cfe2ff;
+        color: #dbeafe;
         line-height: 1;
       }
       .star::after {
@@ -105,28 +90,15 @@
         body {
           font-size: 13px;
         }
-        .navbar .container-fluid {
-          flex-direction: column;
-          align-items: stretch;
-          gap: 10px;
-        }
         .detail-body-text {
           font-size: 1rem;
         }
         .rating-number {
           font-size: 2rem;
         }
-        .rating-stars {
-          font-size: 1.4rem;
-        }
-        .info-box--note,
-        .info-box--overview {
-          padding: 16px;
-        }
       }
     </style>
-      <link href="/styles/common.css" rel="stylesheet" />
-</head>
+  </head>
   <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4 border-bottom">
       <div class="container-fluid">
@@ -140,12 +112,18 @@
           class="btn btn-outline-secondary btn-sm comment-bubble-btn"
           data-bs-toggle="modal"
           data-bs-target="#commentSummaryModal"
-          aria-label="댓글 현황 열기" data-comment-summary-trigger
+          data-comment-summary-trigger
+          aria-label="댓글 현황 열기"
         >
           <span class="bubble-icon">&#128172;</span>
-          <span class="comment-total-count" data-comment-total-count role="status" aria-live="polite" aria-atomic="true"><%= totalCommentCount || 0 %></span>
+          <span
+            class="comment-total-count"
+            data-comment-total-count
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          ><%= totalCommentCount || 0 %></span>
         </button>
-
       </div>
     </nav>
 
@@ -161,6 +139,7 @@
           </div>
         </div>
         <% } %>
+
         <div class="col-md-4">
           <% const posterSrc = content.posterUrl || (content.posterPath ? 'https://image.tmdb.org/t/p/w500' + content.posterPath : ''); %>
           <% if (posterSrc) { %>
@@ -171,79 +150,83 @@
           />
           <% } %>
         </div>
+
         <div class="col-md-8">
           <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
             <h1 class="mb-0"><%= content.title || content.name || '' %></h1>
             <% if (isAdmin) { %>
-            <a href="/admin/content/<%= content.id %>/edit" class="btn btn-sm btn-outline-secondary">?섏젙</a>
+            <a href="/admin/content/<%= content.id %>/edit" class="btn btn-sm btn-outline-secondary">Edit</a>
             <form
               method="post"
               action="/admin/content/<%= content.id %>/delete"
-              onsubmit="return confirm('??異붿쿇????젣?좉퉴??');"
+              onsubmit="return confirm('Delete this recommendation?');"
               class="d-inline"
             >
-              <button type="submit" class="btn btn-sm btn-outline-danger">??젣</button>
+              <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
             </form>
             <% } %>
           </div>
+
           <p class="text-muted">
-            <%= content.year || content.pubDate || '' %> · <%= content.type || '콘텐츠' %>
+            <%= content.year || content.pubDate || '' %> · <%= content.type || 'Content' %>
           </p>
+
           <% const ratingValue = typeof content.myRating === 'number' ? content.myRating : (parseFloat(content.myRating) || 0); %>
-          <div class="info-box info-box--rating rating-box mb-3">
-            <h4>SUPASONIC???됱젏</h4>
+          <div class="info-box rating-box mb-3">
+            <h4>MY RATING</h4>
             <div class="rating-score">
               <span class="rating-number"><%= ratingValue %></span>
               <span class="rating-max">/ 5</span>
             </div>
-            <div class="rating-stars" aria-label="SUPASONIC 평점 <%= ratingValue %>점">
+            <div class="rating-stars" aria-label="My rating <%= ratingValue %>">
               <% for (let i = 1; i <= 5; i++) { %>
               <% const fill = Math.max(0, Math.min(1, ratingValue - (i - 1))) * 100; %>
               <span class="star" style="--fill: <%= fill %>%">&#9733;</span>
               <% } %>
             </div>
           </div>
-          <div class="info-box info-box--note mb-4">
-            <h4>?섏쓽 媛먯긽</h4>
+
+          <div class="info-box mb-4">
+            <h4>MY NOTE</h4>
             <p class="detail-body-text mb-0"><%= content.myNote %></p>
           </div>
+
           <% if (content.overview) { %>
-          <div class="info-box info-box--overview mb-3">
-            <h4>?곹솕 ?댁슜</h4>
+          <div class="info-box mb-3">
+            <h4>OVERVIEW</h4>
             <p class="detail-body-text mb-0"><%= content.overview %></p>
           </div>
           <% } %>
-<ul class="list-unstyled">
+
+          <ul class="list-unstyled">
             <% if (content.releaseDate || content.firstAirDate) { %>
-            <li>
-              <strong>怨듦컻?쇱떆:</strong>
-              <%= content.releaseDate || content.firstAirDate %>
-            </li>
+            <li><strong>Release:</strong> <%= content.releaseDate || content.firstAirDate %></li>
             <% } %>
             <% if (typeof content.popularity === 'number') { %>
-            <li><strong>?멸린吏??</strong> <%= content.popularity %></li>
+            <li><strong>Popularity:</strong> <%= content.popularity %></li>
             <% } %>
             <% if (typeof content.voteAverage === 'number') { %>
-            <li><strong>TMDB ?됱젏:</strong> <%= content.voteAverage %></li>
+            <li><strong>TMDB Score:</strong> <%= content.voteAverage %></li>
             <% } %>
             <% if (typeof content.voteCount === 'number') { %>
-            <li><strong>TMDB ?ы몴 ??</strong> <%= content.voteCount %></li>
+            <li><strong>TMDB Votes:</strong> <%= content.voteCount %></li>
             <% } %>
             <% if (typeof content.adult === 'boolean') { %>
-            <li><strong>성인물 여부:</strong> <%= content.adult ? '예' : '아니오' %></li>
+            <li><strong>Adult:</strong> <%= content.adult ? 'Yes' : 'No' %></li>
             <% } %>
             <% if (content.mediaType) { %>
-            <li><strong>硫?곌??됯껐怨????</strong> <%= content.mediaType %></li>
+            <li><strong>Media Type:</strong> <%= content.mediaType %></li>
             <% } %>
             <% if (Array.isArray(content.genreNames) && content.genreNames.length) { %>
-            <li><strong>?λⅤ:</strong> <%= content.genreNames.join(', ') %></li>
+            <li><strong>Genres:</strong> <%= content.genreNames.join(', ') %></li>
             <% } else if (Array.isArray(content.genreIds) && content.genreIds.length) { %>
-            <li><strong>?λⅤ:</strong> <%= content.genreIds.join(', ') %></li>
+            <li><strong>Genres:</strong> <%= content.genreIds.join(', ') %></li>
             <% } %>
           </ul>
+
           <% if (content.tags && content.tags.length) { %>
           <p>
-            ?쒓렇:
+            Tags:
             <% content.tags.forEach(function (t) { %>
             <span class="badge bg-info text-dark"><%= t %></span>
             <% }); %>
@@ -255,17 +238,15 @@
       <hr class="border-secondary" />
 
       <div class="mb-4">
-        <h3>?볤?</h3>
+        <h3>Comments</h3>
         <% if (!comments || comments.length === 0) { %>
-        <p>?꾩쭅 ?볤????놁뒿?덈떎. 泥??볤????④꺼蹂댁꽭??</p>
+        <p>No comments yet.</p>
         <% } else { %>
         <ul class="list-group">
           <% comments.forEach(function (cm) { %>
           <li class="list-group-item">
             <strong><%= cm.nickname %></strong>
-            <small class="text-light-50">
-              (<%= new Date(cm.createdAt).toLocaleString('ko-KR') %>)
-            </small>
+            <small class="text-muted">(<%= new Date(cm.createdAt).toLocaleString('ko-KR') %>)</small>
             <p class="mb-0"><%= cm.text %></p>
           </li>
           <% }); %>
@@ -274,34 +255,22 @@
       </div>
 
       <div class="mb-5">
-        <h4>?볤? ?④린湲?(濡쒓렇??遺덊븘??</h4>
+        <h4>Leave a Comment</h4>
         <form method="post" action="/content/<%= content.id %>/comments">
           <div class="mb-3">
-            <label class="form-label">?됰꽕??</label>
+            <label class="form-label">Nickname</label>
             <input type="text" name="nickname" class="form-control" required />
           </div>
           <div class="mb-3">
-            <label class="form-label">?댁슜</label>
+            <label class="form-label">Comment</label>
             <textarea name="text" class="form-control" rows="3" required></textarea>
           </div>
-          <button type="submit" class="btn btn-primary">?볤? ?깅줉</button>
+          <button type="submit" class="btn btn-primary">Submit</button>
         </form>
       </div>
     </div>
-      <%- include('partials/commentSummaryModal') %>
-      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <%- include('partials/commentSummaryModal') %>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
