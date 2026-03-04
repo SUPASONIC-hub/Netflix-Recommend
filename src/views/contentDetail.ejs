@@ -187,7 +187,7 @@
             <% } %>
           </div>
           <p class="text-muted">
-            <%= content.year || content.pubDate || '' %> 쨌 <%= content.type || '肄섑뀗痢? %>
+            <%= content.year || content.pubDate || '' %> · <%= content.type || '콘텐츠' %>
           </p>
           <% const ratingValue = typeof content.myRating === 'number' ? content.myRating : (parseFloat(content.myRating) || 0); %>
           <div class="info-box info-box--rating rating-box mb-3">
@@ -196,7 +196,7 @@
               <span class="rating-number"><%= ratingValue %></span>
               <span class="rating-max">/ 5</span>
             </div>
-            <div class="rating-stars" aria-label="SUPASONIC???됱젏 <%= ratingValue %>??>
+            <div class="rating-stars" aria-label="SUPASONIC 평점 <%= ratingValue %>점">
               <% for (let i = 1; i <= 5; i++) { %>
               <% const fill = Math.max(0, Math.min(1, ratingValue - (i - 1))) * 100; %>
               <span class="star" style="--fill: <%= fill %>%">&#9733;</span>
@@ -230,7 +230,7 @@
             <li><strong>TMDB ?ы몴 ??</strong> <%= content.voteCount %></li>
             <% } %>
             <% if (typeof content.adult === 'boolean') { %>
-            <li><strong>?깆씤臾??щ?:</strong> <%= content.adult ? '?? : '?꾨땲?? %></li>
+            <li><strong>성인물 여부:</strong> <%= content.adult ? '예' : '아니오' %></li>
             <% } %>
             <% if (content.mediaType) { %>
             <li><strong>硫?곌??됯껐怨????</strong> <%= content.mediaType %></li>
