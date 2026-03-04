@@ -55,6 +55,11 @@ function parseGenreIds(genreIds) {
   return parsedGenreIds;
 }
 
+if (!process.env.DATABASE_URL) {
+  console.error('DATABASE_URL is not set. Please configure it in environment variables.');
+  process.exit(1);
+}
+
 function invalidateCommentSummaryCache() {
   commentSummaryCache = {
     expiresAt: 0,
@@ -505,6 +510,14 @@ app.post('/admin/content/:id/delete', requireAdmin, async (req, res) => {
   invalidateCommentSummaryCache();
 
   res.redirect('/');
+});
+
+app.use((err, req, res, next) => {
+  console.error(`Unhandled error on ${req.method} ${req.originalUrl}:`, err);
+  if (req.originalUrl && req.originalUrl.startsWith('/api')) {
+    return res.status(500).json({ error: 'internal_server_error' });
+  }
+  return res.status(500).send('Internal Server Error');
 });
 
 // ?쒕쾭 ?쒖옉
