@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&display=swap');
+
 .navbar-brand {
   font-weight: 700;
 }
@@ -17,12 +19,13 @@
 }
 
 .brand-art-text {
-  letter-spacing: 0.2px;
-  background: linear-gradient(90deg, #111827 0%, #0ea5e9 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.75);
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+  font-weight: 700;
+  font-size: 1.02rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #ff2f3d;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
 .comment-bubble-btn {
