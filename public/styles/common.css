@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&display=swap');
 
 .navbar-brand {
   font-weight: 700;
@@ -19,13 +19,13 @@
 }
 
 .brand-art-text {
-  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
-  font-weight: 700;
-  font-size: 1.02rem;
-  letter-spacing: 0.06em;
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
+  font-weight: 800;
+  font-size: 1.18rem;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: #ff2f3d;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+  color: #1f2937;
+  text-shadow: none;
 }
 
 .comment-bubble-btn {
