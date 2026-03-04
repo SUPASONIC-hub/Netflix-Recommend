@@ -35,6 +35,9 @@
             class="form-control form-control-sm"
             placeholder="글 제목 검색"
           />
+          <button type="button" id="commentSummaryReset" class="btn btn-outline-secondary btn-sm">
+            필터 초기화
+          </button>
         </div>
         <div class="list-group" id="commentSummaryList">
           <% commentSummaryList.forEach(function (item) { %>
@@ -46,9 +49,14 @@
             data-latest-ts="<%= item.latestCommentAt ? new Date(item.latestCommentAt).getTime() : 0 %>"
             data-title="<%= item.title %>"
           >
-            <span class="d-flex align-items-center gap-2">
-              <span><%= item.title %></span>
-              <span class="badge text-bg-danger comment-new-badge d-none" data-new-badge></span>
+            <span class="d-flex flex-column">
+              <span class="d-flex align-items-center gap-2">
+                <span><%= item.title %></span>
+                <span class="badge text-bg-danger comment-new-badge d-none" data-new-badge></span>
+              </span>
+              <small class="text-muted comment-latest-at" data-latest-at>
+                최근 댓글: <%= item.latestCommentAt ? new Date(item.latestCommentAt).toLocaleString('ko-KR') : '시간 정보 없음' %>
+              </small>
             </span>
             <span class="badge bg-primary rounded-pill"><%= item.count %></span>
           </a>

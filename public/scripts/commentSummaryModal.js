@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   function getRelativeLabel(latestTs, nowTs) {
     const elapsedMs = Math.max(0, nowTs - latestTs);
     const minuteMs = 60 * 1000;
@@ -14,33 +14,58 @@
     return `${Math.max(1, Math.floor(elapsedMs / weekMs))}주 전`;
   }
 
+  function formatAbsoluteLabel(latestTs) {
+    if (!latestTs) return '시간 정보 없음';
+    return new Date(latestTs).toLocaleString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  }
+
   function buildItemNode(item) {
+    const latestTs = item.latestCommentAt ? new Date(item.latestCommentAt).getTime() : 0;
+
     const anchor = document.createElement('a');
     anchor.href = `/content/${item.contentId}`;
     anchor.className =
       'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
     anchor.setAttribute('data-comment-item', '');
     anchor.dataset.count = String(item.count || 0);
-    anchor.dataset.latestTs = String(
-      item.latestCommentAt ? new Date(item.latestCommentAt).getTime() : 0
-    );
+    anchor.dataset.latestTs = String(latestTs);
     anchor.dataset.title = String(item.title || '');
 
-    const left = document.createElement('span');
-    left.className = 'd-flex align-items-center gap-2';
+    const leftWrap = document.createElement('span');
+    leftWrap.className = 'd-flex flex-column';
+
+    const topLine = document.createElement('span');
+    topLine.className = 'd-flex align-items-center gap-2';
+
     const title = document.createElement('span');
     title.textContent = item.title || '제목 없음';
-    const badge = document.createElement('span');
-    badge.className = 'badge text-bg-danger comment-new-badge d-none';
-    badge.setAttribute('data-new-badge', '');
+
+    const freshBadge = document.createElement('span');
+    freshBadge.className = 'badge text-bg-danger comment-new-badge d-none';
+    freshBadge.setAttribute('data-new-badge', '');
+
+    const latestAt = document.createElement('small');
+    latestAt.className = 'text-muted comment-latest-at';
+    latestAt.setAttribute('data-latest-at', '');
+    latestAt.textContent = `최근 댓글: ${formatAbsoluteLabel(latestTs)}`;
 
     const right = document.createElement('span');
     right.className = 'badge bg-primary rounded-pill';
     right.textContent = String(item.count || 0);
 
-    left.appendChild(title);
-    left.appendChild(badge);
-    anchor.appendChild(left);
+    topLine.appendChild(title);
+    topLine.appendChild(freshBadge);
+    leftWrap.appendChild(topLine);
+    leftWrap.appendChild(latestAt);
+
+    anchor.appendChild(leftWrap);
     anchor.appendChild(right);
     return anchor;
   }
@@ -54,6 +79,7 @@
     const freshHoursSelect = document.getElementById('commentFreshHours');
     const minCountSelect = document.getElementById('commentMinCount');
     const searchInput = document.getElementById('commentSummarySearch');
+    const resetButton = document.getElementById('commentSummaryReset');
     const filteredEmpty = document.getElementById('commentSummaryFilteredEmpty');
     const emptyText = document.getElementById('commentSummaryEmpty');
     const totalCountEls = document.querySelectorAll('[data-comment-total-count]');
@@ -70,6 +96,13 @@
       freshHours: 'commentSummaryFreshHours',
       minCount: 'commentSummaryMinCount',
       search: 'commentSummarySearch',
+    };
+
+    const updateTriggerVisual = (total) => {
+      triggerEls.forEach((trigger) => {
+        trigger.classList.toggle('is-empty', total === 0);
+        trigger.classList.toggle('is-active', total >= 10);
+      });
     };
 
     const loadPreferences = () => {
@@ -91,6 +124,16 @@
         localStorage.setItem(STORAGE_KEYS.freshHours, freshHoursSelect.value);
         localStorage.setItem(STORAGE_KEYS.minCount, minCountSelect.value);
         localStorage.setItem(STORAGE_KEYS.search, searchInput.value.trim());
+      } catch (_) {}
+    };
+
+    const resetPreferences = () => {
+      sortSelect.value = 'count';
+      freshHoursSelect.value = '24';
+      minCountSelect.value = '1';
+      searchInput.value = '';
+      try {
+        Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
       } catch (_) {}
     };
 
@@ -121,12 +164,18 @@
         const latestTs = Number(item.dataset.latestTs || 0);
         const count = Number(item.dataset.count || 0);
         const titleText = String(item.dataset.title || '').toLowerCase();
-        const badge = item.querySelector('[data-new-badge]');
+        const newBadge = item.querySelector('[data-new-badge]');
+        const latestAt = item.querySelector('[data-latest-at]');
         const isFresh = latestTs > 0 && now - latestTs <= freshMs;
-        if (badge) {
-          badge.textContent = isFresh ? getRelativeLabel(latestTs, now) : '';
-          badge.classList.toggle('d-none', !isFresh);
+
+        if (newBadge) {
+          newBadge.textContent = isFresh ? getRelativeLabel(latestTs, now) : '';
+          newBadge.classList.toggle('d-none', !isFresh);
         }
+        if (latestAt) {
+          latestAt.textContent = `최근 댓글: ${formatAbsoluteLabel(latestTs)}`;
+        }
+
         const matchesCount = count >= minCount;
         const matchesSearch = !searchTerm || titleText.includes(searchTerm);
         item.classList.toggle('d-none', !(matchesCount && matchesSearch));
@@ -153,6 +202,7 @@
         totalCountEls.forEach((el) => {
           el.textContent = String(total);
         });
+        updateTriggerVisual(total);
         if (titleEl) {
           titleEl.textContent = `댓글 현황 (${total})`;
         }
@@ -182,6 +232,12 @@
       savePreferences();
       renderSummary();
     });
+    if (resetButton) {
+      resetButton.addEventListener('click', () => {
+        resetPreferences();
+        renderSummary();
+      });
+    }
 
     modalEl.addEventListener('shown.bs.modal', () => {
       searchInput.focus();
@@ -194,6 +250,7 @@
     });
 
     loadPreferences();
+    updateTriggerVisual(Number(totalCountEls[0]?.textContent || 0));
     renderSummary();
   }
 

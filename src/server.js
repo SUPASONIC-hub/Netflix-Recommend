@@ -20,6 +20,11 @@ const {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const COMMENT_SUMMARY_CACHE_TTL_MS = 20 * 1000;
+let commentSummaryCache = {
+  expiresAt: 0,
+  value: null,
+};
 
 function parseTagList(tags) {
   return typeof tags === 'string'
@@ -50,6 +55,27 @@ function parseGenreIds(genreIds) {
   return parsedGenreIds;
 }
 
+function invalidateCommentSummaryCache() {
+  commentSummaryCache = {
+    expiresAt: 0,
+    value: null,
+  };
+}
+
+async function getCachedCommentSummary() {
+  const now = Date.now();
+  if (commentSummaryCache.value && now < commentSummaryCache.expiresAt) {
+    return commentSummaryCache.value;
+  }
+
+  const summary = await getCommentSummary(prisma);
+  commentSummaryCache = {
+    expiresAt: now + COMMENT_SUMMARY_CACHE_TTL_MS,
+    value: summary,
+  };
+  return summary;
+}
+
 // 酉??붿쭊 ?ㅼ젙 (EJS)
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
@@ -69,7 +95,7 @@ app.use(async (req, res, next) => {
   }
 
   try {
-    const summary = await getCommentSummary(prisma);
+    const summary = await getCachedCommentSummary();
     res.locals.commentSummaryList = summary.commentSummaryList;
     res.locals.totalCommentCount = summary.totalCommentCount;
   } catch (error) {
@@ -156,7 +182,7 @@ app.get('/', async (req, res) => {
 
 app.get('/api/comments/summary', async (req, res) => {
   try {
-    const summary = await getCommentSummary(prisma);
+    const summary = await getCachedCommentSummary();
     res.json(summary);
   } catch (error) {
     console.error('Failed to fetch comment summary:', error);
@@ -208,6 +234,7 @@ app.post('/content/:id/comments', async (req, res) => {
       text,
     },
   });
+  invalidateCommentSummaryCache();
 
   res.redirect(`/content/${contentId}`);
 });
@@ -368,6 +395,7 @@ app.post('/admin/content', requireAdmin, async (req, res) => {
       tags: tagList,
     },
   });
+  invalidateCommentSummaryCache();
 
   res.redirect('/');
 });
@@ -458,6 +486,7 @@ app.post('/admin/content/:id/edit', requireAdmin, async (req, res) => {
       tags: parseTagList(tags),
     },
   });
+  invalidateCommentSummaryCache();
   res.redirect(`/content/${id}`);
 });
 
@@ -473,6 +502,7 @@ app.post('/admin/content/:id/delete', requireAdmin, async (req, res) => {
     prisma.comment.deleteMany({ where: { contentId: id } }),
     prisma.content.delete({ where: { id } }),
   ]);
+  invalidateCommentSummaryCache();
 
   res.redirect('/');
 });

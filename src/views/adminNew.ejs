@@ -7,6 +7,9 @@
     <link rel="icon" type="image/png" sizes="48x48" href="/assets/brand-48.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/brand-180.png" />
     <link rel="manifest" href="/site.webmanifest" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="mask-icon" href="/assets/netflix-wordmark.svg" color="#e50914" />
+    <meta name="theme-color" content="#101418" />
     <title>異붿쿇 ?깅줉</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
@@ -170,7 +173,7 @@
           aria-label="댓글 현황 열기" data-comment-summary-trigger
         >
           <span class="bubble-icon">&#128172;</span>
-          <span data-comment-total-count><%= totalCommentCount || 0 %></span>
+          <span class="comment-total-count" data-comment-total-count role="status" aria-live="polite" aria-atomic="true"><%= totalCommentCount || 0 %></span>
         </button>
 
         <div class="d-flex">
@@ -372,6 +375,8 @@
       <%- include('partials/commentSummaryModal') %>
   </body>
 </html>
+
+
 
 
 

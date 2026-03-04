@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&display=swap');
+﻿@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&display=swap');
 
 .navbar-brand {
   font-weight: 700;
@@ -8,6 +8,13 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  transition: transform 120ms ease, opacity 120ms ease;
+}
+
+.brand-art:hover,
+.brand-art:focus-visible {
+  transform: translateY(-1px);
+  opacity: 0.96;
 }
 
 .brand-mascot {
@@ -39,7 +46,70 @@
   line-height: 1.1;
 }
 
+.comment-bubble-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 56px;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease,
+    background-color 120ms ease;
+}
+
+.comment-bubble-btn:hover,
+.comment-bubble-btn:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
+}
+
+.comment-bubble-btn.is-empty {
+  opacity: 0.7;
+}
+
+.comment-bubble-btn.is-active {
+  border-color: #e50914;
+  background-color: #fff5f5;
+}
+
+.comment-total-count {
+  font-weight: 700;
+}
+
+.comment-bubble-btn .bubble-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.comment-new-badge {
+  font-size: 10px;
+}
+
+.comment-latest-at {
+  font-size: 0.75rem;
+}
+
+.comment-summary-controls .form-select,
+.comment-summary-controls .form-control {
+  max-width: 220px;
+}
+
 @media (max-width: 575.98px) {
+  .navbar .container-fluid {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .navbar .navbar-brand {
+    min-width: 0;
+    max-width: calc(100% - 74px);
+  }
+  .navbar .comment-bubble-btn {
+    margin-left: auto;
+  }
+  .brand-art {
+    gap: 6px;
+  }
   .brand-mascot {
     width: 24px;
     height: 24px;
@@ -52,34 +122,42 @@
     font-size: 0.84rem;
     padding: 2px 7px;
   }
-}
-
-.comment-bubble-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-width: 56px;
-}
-
-.comment-bubble-btn .bubble-icon {
-  font-size: 14px;
-  line-height: 1;
-}
-
-.comment-new-badge {
-  font-size: 10px;
-}
-
-.comment-summary-controls .form-select,
-.comment-summary-controls .form-control {
-  max-width: 220px;
-}
-
-@media (max-width: 575.98px) {
+  .comment-bubble-btn {
+    min-width: 52px;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
   .comment-summary-controls .form-select,
   .comment-summary-controls .form-control {
     max-width: none;
     width: 100%;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #0f172a !important;
+    color: #e5e7eb !important;
+  }
+  .navbar {
+    background-color: #111827 !important;
+    border-color: #1f2937 !important;
+  }
+  .brand-picks {
+    color: #fecaca;
+    background: rgba(229, 9, 20, 0.16);
+    border-color: rgba(229, 9, 20, 0.45);
+  }
+  .comment-bubble-btn.is-active {
+    background-color: rgba(229, 9, 20, 0.15);
+  }
+  .modal-content {
+    background-color: #0b1220;
+    color: #e5e7eb;
+    border-color: #1f2937;
+  }
+  .modal-header,
+  .modal-footer {
+    border-color: #1f2937;
   }
 }
