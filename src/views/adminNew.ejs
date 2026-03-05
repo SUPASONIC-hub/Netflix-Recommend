@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
@@ -10,7 +10,7 @@
     <link rel="shortcut icon" href="/favicon.ico" />
     <link rel="mask-icon" href="/assets/netflix-wordmark.svg" color="#e50914" />
     <meta name="theme-color" content="#101418" />
-    <title>異붿쿇 ?깅줉</title>
+    <title>추천 등록</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -27,7 +27,7 @@
         background-color: #ffffff;
         color: #212529;
       }
-@media (max-width: 575.98px) {
+      @media (max-width: 575.98px) {
         body {
           font-size: 13px;
         }
@@ -67,12 +67,12 @@
           const data = await res.json();
 
           if (data && data.error) {
-            alert('寃??以??ㅻ쪟: ' + data.error);
+            alert('검색 중 오류: ' + data.error);
             return;
           }
 
           if (!Array.isArray(data) || data.length === 0) {
-            listEl.innerHTML = '<p>寃??寃곌낵媛 ?놁뒿?덈떎.</p>';
+            listEl.innerHTML = '<p>검색 결과가 없습니다.</p>';
             return;
           }
 
@@ -89,7 +89,7 @@
                 <div class="flex-grow-1">
                   <h5 class="card-title">${item.title}</h5>
                   <p class="card-text">${item.pubDate || ''}</p>
-                  <button type="button" class="btn btn-sm btn-primary">?좏깮?섍린</button>
+                  <button type="button" class="btn btn-sm btn-primary">선택하기</button>
                 </div>
               </div>
             `;
@@ -123,7 +123,7 @@
               document.getElementById('year').value = item.pubDate || '';
               document.getElementById('type').value = item.mediaType || 'movie';
 
-              // 紐⑤떖 ?リ린
+              // 모달 닫기
               const modalEl = document.getElementById('searchModal');
               const modal = bootstrap.Modal.getInstance(modalEl);
               if (modal) {
@@ -133,13 +133,13 @@
             listEl.appendChild(div);
           });
 
-          // 寃??寃곌낵媛 ?덉쑝硫?紐⑤떖 蹂댁뿬二쇨린
+          // 검색 결과가 있으면 모달 표시
           const modalEl = document.getElementById('searchModal');
           const modal = new bootstrap.Modal(modalEl);
           modal.show();
         } catch (e) {
           console.error(e);
-          alert('TMDB 寃???붿껌 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎. 肄섏넄???뺤씤??二쇱꽭??');
+          alert('TMDB 검색 요청 중 오류가 발생했습니다. 콘솔을 확인해 주세요.');
         }
       }
 
@@ -155,16 +155,16 @@
         }
       });
     </script>
-      <link href="/styles/common.css" rel="stylesheet" />
-</head>
+    <link href="/styles/common.css" rel="stylesheet" />
+  </head>
   <body>
     <%- include('partials/siteHeader', { page: 'adminNew', isAdmin: isAdmin }) %>
 
     <div class="container mb-5">
-      <h1 class="mb-3">異붿쿇 ?깅줉</h1>
+      <h1 class="mb-3">추천 등록</h1>
 
       <div class="mb-4">
-        <label class="form-label">TMDB 肄섑뀗痢?寃??</label>
+        <label class="form-label">TMDB 콘텐츠 검색</label>
         <div class="input-group mb-2">
           <input
             type="text"
@@ -172,9 +172,7 @@
             class="form-control"
             placeholder="작품 제목을 입력하세요"
           />
-          <button type="button" class="btn btn-primary" onclick="searchTmdb()">
-            寃??
-          </button>
+          <button type="button" class="btn btn-primary" onclick="searchTmdb()">검색</button>
         </div>
       </div>
 
@@ -188,7 +186,7 @@
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
           <div class="modal-content">
             <div class="modal-header">
-              <h5 class="modal-title" id="searchModalLabel">TMDB 寃??寃곌낵</h5>
+              <h5 class="modal-title" id="searchModalLabel">TMDB 검색 결과</h5>
               <button
                 type="button"
                 class="btn-close btn-close-white"
@@ -206,7 +204,7 @@
       <hr class="border-secondary" />
 
       <form method="post" action="/admin/content">
-        <h3 class="mb-3">?좏깮???묓뭹 + ?섎쭔??媛먯긽</h3>
+        <h3 class="mb-3">선택한 작품 + 나의 감상</h3>
         <input type="hidden" id="tmdbId" name="tmdbId" />
         <input type="hidden" id="name" name="name" />
         <input type="hidden" id="overview" name="overview" />
@@ -221,27 +219,27 @@
         <input type="hidden" id="adult" name="adult" />
         <input type="hidden" id="mediaType" name="mediaType" />
         <div class="mb-3">
-          <label class="form-label">?쒕ぉ</label>
+          <label class="form-label">제목</label>
           <input type="text" id="title" name="title" class="form-control" readonly />
         </div>
         <div class="mb-3">
-          <label class="form-label">?ъ뒪??URL</label>
+          <label class="form-label">포스터 URL</label>
           <input type="text" id="posterUrl" name="posterUrl" class="form-control" />
         </div>
         <div class="mb-3">
-          <label class="form-label">?곕룄</label>
+          <label class="form-label">연도</label>
           <input type="text" id="year" name="year" class="form-control" />
         </div>
         <div class="mb-3">
-          <label class="form-label">???</label>
+          <label class="form-label">타입</label>
           <input type="text" id="type" name="type" class="form-control" value="movie" />
         </div>
         <div class="mb-3">
-          <label class="form-label">?섏쓽 媛먯긽</label>
+          <label class="form-label">나의 감상</label>
           <textarea name="myNote" class="form-control" rows="4" required></textarea>
         </div>
         <div class="mb-3">
-          <label class="form-label">蹂꾩젏 (0.5 ~ 5)</label>
+          <label class="form-label">별점 (0.5 ~ 5)</label>
           <input
             type="number"
             step="0.5"
@@ -253,23 +251,23 @@
           />
         </div>
         <div class="mb-3">
-          <label class="form-label">?쒓렇 (?쇳몴濡?援щ텇)</label>
+          <label class="form-label">태그 (쉼표로 구분)</label>
           <input
             type="text"
             name="tags"
             class="form-control"
-            placeholder="?? ?ㅻ┫?? 媛議? 二쇰쭚??蹂닿린 醫뗭쓬"
+            placeholder="예: 스릴러, 가족, 주말에 보기 좋음"
           />
         </div>
-        <button type="submit" class="btn btn-primary">?깅줉?섍린</button>
+        <button type="submit" class="btn btn-primary">등록하기</button>
       </form>
 
       <hr class="border-secondary my-5" />
 
       <section>
         <div class="d-flex justify-content-between align-items-center mb-3">
-          <h3 class="mb-0">湲곗〈 異붿쿇 紐⑸줉 愿由?</h3>
-          <span class="badge bg-secondary">珥?<%= Array.isArray(contents) ? contents.length : 0 %>媛?/span>
+          <h3 class="mb-0">기존 추천 목록 관리</h3>
+          <span class="badge bg-secondary">총 <%= Array.isArray(contents) ? contents.length : 0 %>개</span>
         </div>
         <form method="get" action="/admin/new" class="row g-2 align-items-center mb-3">
           <div class="col-12 col-md-6">
@@ -277,34 +275,34 @@
               type="text"
               name="manageQ"
               class="form-control"
-              placeholder="?쒕ぉ 寃??.."
+              placeholder="제목 검색..."
               value="<%= manageQuery || '' %>"
             />
           </div>
           <div class="col-12 col-md-3">
             <select name="manageSort" class="form-select">
-              <option value="latest" <%= manageSort === 'latest' ? 'selected' : '' %>>理쒖떊??</option>
-              <option value="rating" <%= manageSort === 'rating' ? 'selected' : '' %>>?됱젏??</option>
+              <option value="latest" <%= manageSort === 'latest' ? 'selected' : '' %>>최신순</option>
+              <option value="rating" <%= manageSort === 'rating' ? 'selected' : '' %>>평점순</option>
             </select>
           </div>
           <div class="col-12 col-md-auto">
-            <button type="submit" class="btn btn-primary">?곸슜</button>
-            <a href="/admin/new" class="btn btn-outline-secondary ms-2">珥덇린??</a>
+            <button type="submit" class="btn btn-primary">적용</button>
+            <a href="/admin/new" class="btn btn-outline-secondary ms-2">초기화</a>
           </div>
         </form>
 
         <% if (!contents || contents.length === 0) { %>
-        <p class="text-muted">?깅줉??異붿쿇???놁뒿?덈떎.</p>
+        <p class="text-muted">등록된 추천이 없습니다.</p>
         <% } else { %>
         <div class="table-responsive">
           <table class="table table-striped table-bordered align-middle">
             <thead class="table-light">
               <tr>
-                <th style="width: 70px;">?ъ뒪??/th>
-                <th>?쒕ぉ</th>
-                <th style="width: 110px;">???/th>
-                <th style="width: 90px;">?됱젏</th>
-                <th style="width: 220px;">愿由?/th>
+                <th style="width: 70px;">포스터</th>
+                <th>제목</th>
+                <th style="width: 110px;">타입</th>
+                <th style="width: 90px;">평점</th>
+                <th style="width: 220px;">관리</th>
               </tr>
             </thead>
             <tbody>
@@ -319,7 +317,7 @@
                     style="width: 52px; height: 78px; object-fit: cover; border-radius: 4px;"
                   />
                   <% } else { %>
-                  <span class="text-muted small">?놁쓬</span>
+                  <span class="text-muted small">없음</span>
                   <% } %>
                 </td>
                 <td>
@@ -330,15 +328,15 @@
                 <td><%= typeof c.myRating === 'number' ? c.myRating : '-' %></td>
                 <td>
                   <div class="d-flex gap-2">
-                    <a href="/content/<%= c.id %>" class="btn btn-sm btn-outline-primary">?곸꽭</a>
-                    <a href="/admin/content/<%= c.id %>/edit" class="btn btn-sm btn-outline-secondary">?섏젙</a>
+                    <a href="/content/<%= c.id %>" class="btn btn-sm btn-outline-primary">상세</a>
+                    <a href="/admin/content/<%= c.id %>/edit" class="btn btn-sm btn-outline-secondary">수정</a>
                     <form
                       method="post"
                       action="/admin/content/<%= c.id %>/delete"
-                      onsubmit="return confirm('??異붿쿇????젣?좉퉴??');"
+                      onsubmit="return confirm('이 추천을 삭제할까요?');"
                       class="d-inline"
                     >
-                      <button type="submit" class="btn btn-sm btn-outline-danger">??젣</button>
+                      <button type="submit" class="btn btn-sm btn-outline-danger">삭제</button>
                     </form>
                   </div>
                 </td>
@@ -350,19 +348,6 @@
         <% } %>
       </section>
     </div>
-      <%- include('partials/commentSummaryModal') %>
+    <%- include('partials/commentSummaryModal') %>
   </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-

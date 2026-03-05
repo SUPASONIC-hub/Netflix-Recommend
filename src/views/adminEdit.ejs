@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
@@ -10,7 +10,7 @@
     <link rel="shortcut icon" href="/favicon.ico" />
     <link rel="mask-icon" href="/assets/netflix-wordmark.svg" color="#e50914" />
     <meta name="theme-color" content="#101418" />
-    <title>異붿쿇 ?섏젙</title>
+    <title>추천 수정</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -27,7 +27,7 @@
         background-color: #ffffff;
         color: #212529;
       }
-@media (max-width: 575.98px) {
+      @media (max-width: 575.98px) {
         body {
           font-size: 13px;
         }
@@ -48,17 +48,17 @@
         }
       }
     </style>
-      <link href="/styles/common.css" rel="stylesheet" />
-</head>
+    <link href="/styles/common.css" rel="stylesheet" />
+  </head>
   <body>
     <%- include('partials/siteHeader', { page: 'adminEdit', isAdmin: isAdmin, content: content }) %>
 
     <div class="container mb-5">
-      <h1 class="mb-3">異붿쿇 ?섏젙</h1>
+      <h1 class="mb-3">추천 수정</h1>
       <form method="post" action="/admin/content/<%= content.id %>/edit">
         <div class="row g-3">
           <div class="col-md-6">
-            <label class="form-label">?쒕ぉ</label>
+            <label class="form-label">제목</label>
             <input
               type="text"
               name="title"
@@ -68,7 +68,7 @@
             />
           </div>
           <div class="col-md-6">
-            <label class="form-label">?대쫫(name)</label>
+            <label class="form-label">이름(name)</label>
             <input
               type="text"
               name="name"
@@ -77,19 +77,19 @@
             />
           </div>
           <div class="col-12">
-            <label class="form-label">媛쒖슂</label>
+            <label class="form-label">개요</label>
             <textarea name="overview" class="form-control" rows="3"><%= content.overview || '' %></textarea>
           </div>
           <div class="col-md-4">
-            <label class="form-label">?곕룄</label>
+            <label class="form-label">연도</label>
             <input type="text" name="year" class="form-control" value="<%= content.year || '' %>" />
           </div>
           <div class="col-md-4">
-            <label class="form-label">???type)</label>
+            <label class="form-label">타입(type)</label>
             <input type="text" name="type" class="form-control" value="<%= content.type || '' %>" />
           </div>
           <div class="col-md-4">
-            <label class="form-label">誘몃뵒?????mediaType)</label>
+            <label class="form-label">미디어 타입(mediaType)</label>
             <input
               type="text"
               name="mediaType"
@@ -98,7 +98,7 @@
             />
           </div>
           <div class="col-md-6">
-            <label class="form-label">怨듦컻??releaseDate)</label>
+            <label class="form-label">공개일(releaseDate)</label>
             <input
               type="text"
               name="releaseDate"
@@ -107,7 +107,7 @@
             />
           </div>
           <div class="col-md-6">
-            <label class="form-label">諛⑹쁺??firstAirDate)</label>
+            <label class="form-label">방영일(firstAirDate)</label>
             <input
               type="text"
               name="firstAirDate"
@@ -143,7 +143,7 @@
             />
           </div>
           <div class="col-md-4">
-            <label class="form-label">genreIds (JSON ?먮뒗 ?쇳몴)</label>
+            <label class="form-label">genreIds (JSON 또는 쉼표)</label>
             <input
               type="text"
               name="genreIds"
@@ -186,11 +186,11 @@
             </select>
           </div>
           <div class="col-12">
-            <label class="form-label">??媛먯긽??</label>
+            <label class="form-label">나의 감상</label>
             <textarea name="myNote" class="form-control" rows="4" required><%= content.myNote || '' %></textarea>
           </div>
           <div class="col-md-4">
-            <label class="form-label">???됱젏 (0.5~5)</label>
+            <label class="form-label">내 평점 (0.5~5)</label>
             <input
               type="number"
               step="0.5"
@@ -203,7 +203,7 @@
             />
           </div>
           <div class="col-md-8">
-            <label class="form-label">?쒓렇 (?쇳몴 援щ텇)</label>
+            <label class="form-label">태그 (쉼표 구분)</label>
             <input
               type="text"
               name="tags"
@@ -214,25 +214,12 @@
         </div>
 
         <div class="mt-4 d-flex gap-2">
-          <button type="submit" class="btn btn-primary">?섏젙 ???</button>
-          <a href="/content/<%= content.id %>" class="btn btn-outline-secondary">痍⑥냼</a>
+          <button type="submit" class="btn btn-primary">수정 저장</button>
+          <a href="/content/<%= content.id %>" class="btn btn-outline-secondary">취소</a>
         </div>
       </form>
     </div>
-      <%- include('partials/commentSummaryModal') %>
-      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <%- include('partials/commentSummaryModal') %>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
