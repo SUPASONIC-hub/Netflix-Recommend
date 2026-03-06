@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
@@ -22,80 +22,20 @@
     <link href="/styles/common.css" rel="stylesheet" />
     <style>
       body {
-        font-family: 'Nanum Gothic', system-ui, -apple-system, BlinkMacSystemFont,
-          'Segoe UI', sans-serif;
+        font-family: 'Nanum Gothic', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+          sans-serif;
         font-size: 14px;
-        background-color: #ffffff;
-        color: #212529;
       }
       .detail-body-text {
         font-size: 1.08rem;
         line-height: 1.7;
         white-space: pre-wrap;
-        overflow-wrap: anywhere;
       }
       .info-box {
         border: 1px solid #cfe2ff;
         border-radius: 12px;
         padding: 16px;
         background: #f8fbff;
-      }
-      .info-box h4 {
-        font-size: 1rem;
-        margin-bottom: 10px;
-        font-weight: 700;
-        color: #0b5ed7;
-      }
-      .rating-box {
-        background: #eef5ff;
-        border-color: #b6d4fe;
-      }
-      .rating-score {
-        display: flex;
-        align-items: baseline;
-        gap: 8px;
-        font-weight: 700;
-        color: #0b5ed7;
-      }
-      .rating-number {
-        font-size: 2.3rem;
-        line-height: 1;
-      }
-      .rating-max {
-        font-size: 1.2rem;
-        opacity: 0.85;
-      }
-      .rating-stars {
-        margin-top: 8px;
-        font-size: 1.6rem;
-        letter-spacing: 2px;
-      }
-      .star {
-        position: relative;
-        display: inline-block;
-        color: #dbeafe;
-        line-height: 1;
-      }
-      .star::after {
-        content: '\2605';
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: var(--fill, 0%);
-        overflow: hidden;
-        color: #0b5ed7;
-        white-space: nowrap;
-      }
-      @media (max-width: 575.98px) {
-        body {
-          font-size: 13px;
-        }
-        .detail-body-text {
-          font-size: 1rem;
-        }
-        .rating-number {
-          font-size: 2rem;
-        }
       }
     </style>
   </head>
@@ -107,7 +47,10 @@
         <% const backdropSrc = content.backdropPath ? 'https://image.tmdb.org/t/p/w780' + content.backdropPath : (content.posterPath ? 'https://image.tmdb.org/t/p/w780' + content.posterPath : (content.posterUrl || '')); %>
         <% if (backdropSrc) { %>
         <div class="col-12 mb-3">
-          <div class="rounded" style="background-image: url('<%= backdropSrc %>'); background-size: cover; background-position: center; padding: 20px; min-height: 220px;">
+          <div
+            class="rounded"
+            style="background-image: url('<%= backdropSrc %>'); background-size: cover; background-position: center; padding: 20px; min-height: 220px;"
+          >
             <div class="bg-dark bg-opacity-50 text-white p-3 rounded">
               <h2 class="mb-0"><%= content.title || content.name || '' %></h2>
             </div>
@@ -139,6 +82,7 @@
               onsubmit="return confirm('이 추천을 삭제할까요?');"
               class="d-inline"
             >
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
               <button type="submit" class="btn btn-sm btn-outline-danger">삭제</button>
             </form>
             <% } %>
@@ -148,22 +92,7 @@
             <%= content.year || content.pubDate || '' %> · <%= content.type || '콘텐츠' %>
           </p>
 
-          <% const ratingValue = typeof content.myRating === 'number' ? content.myRating : (parseFloat(content.myRating) || 0); %>
-          <div class="info-box rating-box mb-3">
-            <h4>내 평점</h4>
-            <div class="rating-score">
-              <span class="rating-number"><%= ratingValue %></span>
-              <span class="rating-max">/ 5</span>
-            </div>
-            <div class="rating-stars" aria-label="내 평점 <%= ratingValue %>점">
-              <% for (let i = 1; i <= 5; i++) { %>
-              <% const fill = Math.max(0, Math.min(1, ratingValue - (i - 1))) * 100; %>
-              <span class="star" style="--fill: <%= fill %>%">&#9733;</span>
-              <% } %>
-            </div>
-          </div>
-
-          <div class="info-box mb-4">
+          <div class="info-box mb-3">
             <h4>나의 감상</h4>
             <p class="detail-body-text mb-0"><%= content.myNote %></p>
           </div>
@@ -176,6 +105,7 @@
           <% } %>
 
           <ul class="list-unstyled">
+            <li><strong>내 평점:</strong> <%= content.myRating %> / 5</li>
             <% if (content.releaseDate || content.firstAirDate) { %>
             <li><strong>공개일:</strong> <%= content.releaseDate || content.firstAirDate %></li>
             <% } %>
@@ -223,7 +153,9 @@
           <% comments.forEach(function (cm) { %>
           <li class="list-group-item">
             <strong><%= cm.nickname %></strong>
-            <small class="text-muted">(<%= new Date(cm.createdAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) %>)</small>
+            <small class="text-muted">
+              (<%= new Date(cm.createdAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) %>)
+            </small>
             <p class="mb-0"><%= cm.text %></p>
           </li>
           <% }); %>

@@ -49,6 +49,7 @@ function asInt(value, fieldName, { min = -Infinity, max = Infinity, required = f
 function validateCommentInput(payload) {
   const nicknameResult = asRequiredString(payload.nickname, '닉네임', MAX_NICKNAME_LENGTH);
   if (!nicknameResult.ok) return nicknameResult;
+
   const textResult = asRequiredString(payload.text, '댓글', MAX_TEXT_LENGTH);
   if (!textResult.ok) return textResult;
 
@@ -59,6 +60,10 @@ function validateCommentInput(payload) {
       text: textResult.value,
     },
   };
+}
+
+function normalizeAdult(value) {
+  return value === true || value === 'true' || value === '1' || value === 1;
 }
 
 function validateAdminContentInput(payload, parseTagList, parseGenreIds) {
@@ -77,7 +82,7 @@ function validateAdminContentInput(payload, parseTagList, parseGenreIds) {
   const myRating = asFloat(payload.myRating, '평점', { min: 0.5, max: 5, required: true });
   if (!myRating.ok) return myRating;
 
-  const popularity = asFloat(payload.popularity, '인기 지표');
+  const popularity = asFloat(payload.popularity, '인기도');
   if (!popularity.ok) return popularity;
   const voteAverage = asFloat(payload.voteAverage, 'TMDB 평점');
   if (!voteAverage.ok) return voteAverage;
@@ -104,7 +109,7 @@ function validateAdminContentInput(payload, parseTagList, parseGenreIds) {
       popularity: popularity.value,
       voteAverage: voteAverage.value,
       voteCount: voteCount.value,
-      adult: payload.adult === true || payload.adult === 'true' || payload.adult === '1' || payload.adult === 1,
+      adult: normalizeAdult(payload.adult),
       mediaType: asOptionalString(payload.mediaType, 40),
       year: asOptionalString(payload.year, 12),
       type: asOptionalString(payload.type, 40),
@@ -128,7 +133,7 @@ function validateAdminContentUpdateInput(payload, parseTagList, parseGenreIds) {
   const myRating = asFloat(payload.myRating, '평점', { min: 0.5, max: 5, required: true });
   if (!myRating.ok) return myRating;
 
-  const popularity = asFloat(payload.popularity, '인기 지표');
+  const popularity = asFloat(payload.popularity, '인기도');
   if (!popularity.ok) return popularity;
   const voteAverage = asFloat(payload.voteAverage, 'TMDB 평점');
   if (!voteAverage.ok) return voteAverage;
@@ -153,7 +158,7 @@ function validateAdminContentUpdateInput(payload, parseTagList, parseGenreIds) {
       popularity: popularity.value,
       voteAverage: voteAverage.value,
       voteCount: voteCount.value,
-      adult: payload.adult === true || payload.adult === 'true' || payload.adult === '1' || payload.adult === 1,
+      adult: normalizeAdult(payload.adult),
       mediaType: asOptionalString(payload.mediaType, 40),
       year: asOptionalString(payload.year, 12),
       type: asOptionalString(payload.type, 40),

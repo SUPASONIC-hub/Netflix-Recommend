@@ -1,16 +1,26 @@
-const express = require('express');
+﻿const express = require('express');
 const crypto = require('crypto');
 const path = require('path');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
-// 환경 변수 로드
+// ?섍꼍 蹂??濡쒕뱶
 if (process.env.NODE_ENV !== 'production') {
   dotenv.config();
 }
 
 const { prisma } = require('./prisma');
-const { requireAdmin, isAdminMiddleware } = require('./tokenAuth');
+const { asyncHandler } = require('./utils/asyncHandler');
+const { selectCsrfCandidate, isValidCsrfToken } = require('./utils/csrf');
+const { resolvePageParams, buildHomeOrderBy } = require('./utils/homeQuery');
+const {
+  ADMIN_SESSION_MAX_AGE_MS,
+  createAdminSessionToken,
+  requireAdmin,
+  isAdminMiddleware,
+} = require('./tokenAuth');
 const { getCommentSummary } = require('./utils/commentSummaryService');
 const {
   validateCommentInput,
@@ -21,6 +31,7 @@ const {
   searchTmdbContents,
   resolveGenreNames,
   resolveGenreNamesForContents,
+  resolveGenreNamesToIds,
 } = require('./tmdbApi');
 
 const app = express();
@@ -28,6 +39,7 @@ const PORT = process.env.PORT || 3000;
 const COMMENT_SUMMARY_CACHE_TTL_MS = 30 * 1000;
 const LOG_LEVEL = (process.env.LOG_LEVEL || 'info').toLowerCase();
 const SSE_KEEPALIVE_MS = 25 * 1000;
+const CSRF_COOKIE_NAME = 'csrfToken';
 let commentSummaryCache = {
   expiresAt: 0,
   value: null,
@@ -88,10 +100,73 @@ function parseGenreIds(genreIds) {
   return parsedGenreIds;
 }
 
+function getCookieSecret() {
+  const secret = process.env.COOKIE_SECRET;
+  if (secret) return secret;
+
+  if (process.env.NODE_ENV === 'production') {
+    console.error('COOKIE_SECRET is not set. Please configure it in environment variables.');
+    process.exit(1);
+  }
+
+  const fallback = 'dev-cookie-secret';
+  log('warn', 'COOKIE_SECRET is not set. Using insecure development fallback secret.');
+  return fallback;
+}
+
+const cookieSecret = getCookieSecret();
+app.locals.cookieSecret = cookieSecret;
+
 if (!process.env.DATABASE_URL) {
   console.error('DATABASE_URL is not set. Please configure it in environment variables.');
   process.exit(1);
 }
+
+function issueCsrfToken(res) {
+  const token = crypto.randomBytes(24).toString('hex');
+  res.cookie(CSRF_COOKIE_NAME, token, {
+    httpOnly: true,
+    signed: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+  return token;
+}
+
+function ensureCsrfToken(req, res, next) {
+  const existing = req.signedCookies?.[CSRF_COOKIE_NAME];
+  const token = typeof existing === 'string' && existing ? existing : issueCsrfToken(res);
+  res.locals.csrfToken = token;
+  next();
+}
+
+function requireCsrf(req, res, next) {
+  const cookieToken = req.signedCookies?.[CSRF_COOKIE_NAME];
+  const bodyToken = typeof req.body?._csrf === 'string' ? req.body._csrf : '';
+  const headerToken =
+    typeof req.headers['x-csrf-token'] === 'string' ? req.headers['x-csrf-token'] : '';
+  const candidate = selectCsrfCandidate(bodyToken, headerToken);
+
+  if (!isValidCsrfToken(cookieToken, candidate)) {
+    return res.status(403).send('Invalid CSRF token');
+  }
+
+  return next();
+}
+
+const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  handler: (req, res) =>
+    res.status(429).render('adminLogin', {
+      isAdmin: false,
+      error: '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.',
+    }),
+});
 
 function invalidateCommentSummaryCache() {
   commentSummaryCache = {
@@ -131,15 +206,39 @@ async function getCachedCommentSummary() {
   return summary;
 }
 
-// 뷰 엔진 설정 (EJS)
+// 酉??붿쭊 ?ㅼ젙 (EJS)
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
-// 공통 미들웨어
+// 怨듯넻 誘몃뱾?⑥뼱
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(cookieParser(process.env.ADMIN_PASSWORD || 'secret'));
+app.use(cookieParser(cookieSecret));
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          'https://cdn.jsdelivr.net',
+          'https://fonts.googleapis.com',
+        ],
+        imgSrc: ["'self'", 'data:', 'https://image.tmdb.org', 'https:'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+        connectSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  })
+);
 app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use(ensureCsrfToken);
 app.use((req, res, next) => {
   req.requestId = buildRequestId();
   res.locals.requestId = req.requestId;
@@ -175,11 +274,8 @@ app.use(async (req, res, next) => {
   next();
 });
 
-// 추천 콘텐츠 목록
-app.get('/', async (req, res) => {
-  const contents = await prisma.content.findMany();
-  const contentsWithGenres = await resolveGenreNamesForContents(contents);
-
+// 異붿쿇 肄섑뀗痢?紐⑸줉
+app.get('/', asyncHandler(async (req, res) => {
   const selectedGenre = typeof req.query.genre === 'string' ? req.query.genre : '';
   const selectedGenres = Array.isArray(req.query.genres)
     ? req.query.genres.map((g) => String(g).trim()).filter(Boolean)
@@ -191,6 +287,7 @@ app.get('/', async (req, res) => {
     : [];
   const searchQuery = typeof req.query.q === 'string' ? req.query.q.trim() : '';
   const sort = typeof req.query.sort === 'string' ? req.query.sort : '';
+  const { page, pageSize } = resolvePageParams(req.query);
 
   const normalizedGenres = selectedGenres.length
     ? selectedGenres
@@ -198,59 +295,71 @@ app.get('/', async (req, res) => {
     ? [selectedGenre]
     : [];
 
-  const filteredByGenre = normalizedGenres.length
-    ? contentsWithGenres.filter((c) =>
-        Array.isArray(c.genreNames)
-          ? normalizedGenres.some((g) => c.genreNames.includes(g))
-          : false
-      )
-    : contentsWithGenres;
-
-  const filteredBySearch = searchQuery
-    ? filteredByGenre.filter((c) => {
-        const haystack = [
-          c.title,
-          c.name,
-          c.overview,
-          c.myNote,
-          Array.isArray(c.tags) ? c.tags.join(' ') : '',
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-        return haystack.includes(searchQuery.toLowerCase());
-      })
-    : filteredByGenre;
-
-  const sorted = [...filteredBySearch];
-  if (sort === 'vote') {
-    sorted.sort(
-      (a, b) => (b.voteAverage || -1) - (a.voteAverage || -1)
-    );
-  } else if (sort === 'pop') {
-    sorted.sort((a, b) => (b.popularity || -1) - (a.popularity || -1));
-  } else if (sort === 'recent') {
-    sorted.sort(
-      (a, b) =>
-        new Date(b.releaseDate || b.firstAirDate || b.year || 0) -
-        new Date(a.releaseDate || a.firstAirDate || a.year || 0)
-    );
+  const where = {};
+  if (searchQuery) {
+    where.OR = [
+      { title: { contains: searchQuery, mode: 'insensitive' } },
+      { name: { contains: searchQuery, mode: 'insensitive' } },
+      { overview: { contains: searchQuery, mode: 'insensitive' } },
+      { myNote: { contains: searchQuery, mode: 'insensitive' } },
+      { tags: { has: searchQuery } },
+    ];
   }
+
+  if (normalizedGenres.length) {
+    const selectedGenreIds = await resolveGenreNamesToIds(normalizedGenres);
+    if (selectedGenreIds.length === 0) {
+      return res.render('home', {
+        contents: [],
+        isAdmin: req.isAdmin,
+        selectedGenre,
+        selectedGenres: normalizedGenres,
+        searchQuery,
+        sort,
+        page,
+        pageSize,
+        totalItems: 0,
+        totalPages: 1,
+        totalCommentCount: res.locals.totalCommentCount,
+        commentSummaryList: res.locals.commentSummaryList,
+      });
+    }
+    where.genreIds = { hasSome: selectedGenreIds };
+  }
+
+  const orderBy = buildHomeOrderBy(sort);
+
+  const totalItems = await prisma.content.count({ where });
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const skip = (safePage - 1) * pageSize;
+
+  const contents = await prisma.content.findMany({
+    where,
+    orderBy,
+    skip,
+    take: pageSize,
+  });
+  const contentsWithGenres = await resolveGenreNamesForContents(contents);
 
 
   res.render('home', {
-    contents: sorted,
+    contents: contentsWithGenres,
     isAdmin: req.isAdmin,
     selectedGenre,
     selectedGenres: normalizedGenres,
     searchQuery,
     sort,
+    page: safePage,
+    pageSize,
+    totalItems,
+    totalPages,
     totalCommentCount: res.locals.totalCommentCount,
     commentSummaryList: res.locals.commentSummaryList,
   });
-});
+}));
 
-app.get('/healthz', async (req, res) => {
+app.get('/healthz', asyncHandler(async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
     res.json({
@@ -267,9 +376,9 @@ app.get('/healthz', async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   }
-});
+}));
 
-app.get('/api/comments/summary', async (req, res) => {
+app.get('/api/comments/summary', asyncHandler(async (req, res) => {
   try {
     const summary = await getCachedCommentSummary();
     const etag = buildSummaryEtag(summary);
@@ -287,9 +396,9 @@ app.get('/api/comments/summary', async (req, res) => {
       error: 'failed_to_fetch_comment_summary',
     });
   }
-});
+}));
 
-app.get('/api/comments/summary/stream', async (req, res) => {
+app.get('/api/comments/summary/stream', asyncHandler(async (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
@@ -314,10 +423,10 @@ app.get('/api/comments/summary/stream', async (req, res) => {
     commentSummarySubscribers.delete(res);
     log('debug', `SSE subscriber disconnected (${commentSummarySubscribers.size})`);
   });
-});
+}));
 
-// 콘텐츠 상세 + 댓글
-app.get('/content/:id', async (req, res) => {
+// 肄섑뀗痢??곸꽭 + ?볤?
+app.get('/content/:id', asyncHandler(async (req, res) => {
   const id = req.params.id;
   const content = await prisma.content.findUnique({ where: { id } });
   if (!content) {
@@ -336,10 +445,10 @@ app.get('/content/:id', async (req, res) => {
     comments: contentComments,
     isAdmin: req.isAdmin,
   });
-});
+}));
 
-// 댓글 작성 (로그인 불필요)
-app.post('/content/:id/comments', async (req, res) => {
+// ?볤? ?묒꽦 (濡쒓렇??遺덊븘??
+app.post('/content/:id/comments', asyncHandler(async (req, res) => {
   const contentId = req.params.id;
   const validation = validateCommentInput(req.body || {});
   if (!validation.ok) {
@@ -359,15 +468,15 @@ app.post('/content/:id/comments', async (req, res) => {
   void broadcastCommentSummaryUpdate();
 
   res.redirect(`/content/${contentId}`);
-});
+}));
 
-// 관리자 로그인 페이지
+// 愿由ъ옄 濡쒓렇???섏씠吏
 app.get('/admin/login', (req, res) => {
   res.render('adminLogin', { isAdmin: req.isAdmin, error: null });
 });
 
-// 관리자 로그인 처리
-app.post('/admin/login', (req, res) => {
+// 愿由ъ옄 濡쒓렇??泥섎━
+app.post('/admin/login', adminLoginLimiter, requireCsrf, (req, res) => {
   const { password } = req.body;
   const adminPassword = process.env.ADMIN_PASSWORD;
 
@@ -376,9 +485,13 @@ app.post('/admin/login', (req, res) => {
   }
 
   if (password === adminPassword) {
-    res.cookie('adminToken', adminPassword, {
+    const sessionToken = createAdminSessionToken(cookieSecret);
+    res.cookie('adminToken', sessionToken, {
       httpOnly: true,
       signed: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: ADMIN_SESSION_MAX_AGE_MS,
     });
     return res.redirect('/admin/new');
   }
@@ -389,8 +502,13 @@ app.post('/admin/login', (req, res) => {
   });
 });
 
-// 관리자: 추천 콘텐츠 등록 페이지
-app.get('/admin/new', requireAdmin, async (req, res) => {
+app.post('/admin/logout', requireAdmin, requireCsrf, (req, res) => {
+  res.clearCookie('adminToken');
+  res.redirect('/');
+});
+
+// 愿由ъ옄: 異붿쿇 肄섑뀗痢??깅줉 ?섏씠吏
+app.get('/admin/new', requireAdmin, asyncHandler(async (req, res) => {
   const manageQuery =
     typeof req.query.manageQ === 'string' ? req.query.manageQ.trim() : '';
   const manageSort =
@@ -417,10 +535,10 @@ app.get('/admin/new', requireAdmin, async (req, res) => {
   });
 
   res.render('adminNew', { isAdmin: true, contents, manageQuery, manageSort });
-});
+}));
 
-// TMDB 검색 API (관리자 전용)
-app.get('/api/tmdb/search', requireAdmin, async (req, res) => {
+// TMDB 寃??API (愿由ъ옄 ?꾩슜)
+app.get('/api/tmdb/search', requireAdmin, asyncHandler(async (req, res) => {
   const query = req.query.q;
   if (!query) {
     return res.status(400).json({ error: 'q 쿼리 파라미터가 필요합니다.' });
@@ -430,18 +548,18 @@ app.get('/api/tmdb/search', requireAdmin, async (req, res) => {
     const results = await searchTmdbContents(query);
     res.json(results);
   } catch (err) {
-    // TMDB에서 내려준 에러 메시지를 가능한 그대로 전달
-    console.error('TMDB 검색 오류:', err.response?.data || err.message);
+    // TMDB?먯꽌 ?대젮以 ?먮윭 硫붿떆吏瑜?媛?ν븳 洹몃?濡??꾨떖
+    console.error('TMDB 寃???ㅻ쪟:', err.response?.data || err.message);
     const apiErrorMessage = err.response?.data?.errorMessage;
     res.status(500).json({
       error:
-        apiErrorMessage || 'TMDB 검색 중 오류가 발생했습니다. (서버 로그를 확인해 주세요.)',
+        apiErrorMessage || 'TMDB 寃??以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎. (?쒕쾭 濡쒓렇瑜??뺤씤??二쇱꽭??)',
     });
   }
-});
+}));
 
-// 콘텐츠 등록 (관리자 전용)
-app.post('/admin/content', requireAdmin, async (req, res) => {
+// 肄섑뀗痢??깅줉 (愿由ъ옄 ?꾩슜)
+app.post('/admin/content', requireAdmin, requireCsrf, asyncHandler(async (req, res) => {
   const validation = validateAdminContentInput(req.body || {}, parseTagList, parseGenreIds);
   if (!validation.ok) {
     return res.status(400).send(validation.error);
@@ -460,20 +578,20 @@ app.post('/admin/content', requireAdmin, async (req, res) => {
   void broadcastCommentSummaryUpdate();
 
   res.redirect('/');
-});
+}));
 
-// 관리자: 추천 콘텐츠 수정 페이지
-app.get('/admin/content/:id/edit', requireAdmin, async (req, res) => {
+// 愿由ъ옄: 異붿쿇 肄섑뀗痢??섏젙 ?섏씠吏
+app.get('/admin/content/:id/edit', requireAdmin, asyncHandler(async (req, res) => {
   const { id } = req.params;
   const content = await prisma.content.findUnique({ where: { id } });
   if (!content) {
     return res.status(404).send('콘텐츠를 찾을 수 없습니다.');
   }
   res.render('adminEdit', { isAdmin: true, content });
-});
+}));
 
-// 관리자: 추천 콘텐츠 수정
-app.post('/admin/content/:id/edit', requireAdmin, async (req, res) => {
+// 愿由ъ옄: 異붿쿇 肄섑뀗痢??섏젙
+app.post('/admin/content/:id/edit', requireAdmin, requireCsrf, asyncHandler(async (req, res) => {
   const { id } = req.params;
   const current = await prisma.content.findUnique({ where: { id } });
   if (!current) {
@@ -491,10 +609,10 @@ app.post('/admin/content/:id/edit', requireAdmin, async (req, res) => {
   invalidateCommentSummaryCache();
   void broadcastCommentSummaryUpdate();
   res.redirect(`/content/${id}`);
-});
+}));
 
-// 관리자: 추천 콘텐츠 삭제
-app.post('/admin/content/:id/delete', requireAdmin, async (req, res) => {
+// 愿由ъ옄: 異붿쿇 肄섑뀗痢???젣
+app.post('/admin/content/:id/delete', requireAdmin, requireCsrf, asyncHandler(async (req, res) => {
   const { id } = req.params;
   const content = await prisma.content.findUnique({ where: { id } });
   if (!content) {
@@ -509,7 +627,7 @@ app.post('/admin/content/:id/delete', requireAdmin, async (req, res) => {
   void broadcastCommentSummaryUpdate();
 
   res.redirect('/');
-});
+}));
 
 app.use((req, res) => {
   if (req.originalUrl && req.originalUrl.startsWith('/api')) {
@@ -517,7 +635,7 @@ app.use((req, res) => {
   }
   return res.status(404).render('error', {
     title: '페이지를 찾을 수 없습니다',
-    message: '요청한 페이지가 없거나 이동되었습니다.',
+    message: '요청하신 페이지가 없거나 이동되었습니다.',
     statusCode: 404,
     requestId: req.requestId,
     isAdmin: req.isAdmin,
@@ -538,7 +656,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 서버 시작
+// ?쒕쾭 ?쒖옉
 prisma
   .$connect()
   .then(() => {
@@ -555,4 +673,8 @@ process.on('SIGINT', async () => {
   await prisma.$disconnect();
   process.exit(0);
 });
+
+
+
+
 

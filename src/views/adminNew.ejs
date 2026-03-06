@@ -19,36 +19,12 @@
       href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700&display=swap"
       rel="stylesheet"
     />
+    <link href="/styles/common.css" rel="stylesheet" />
     <style>
       body {
-        font-family: 'Nanum Gothic', system-ui, -apple-system, BlinkMacSystemFont,
-          'Segoe UI', sans-serif;
+        font-family: 'Nanum Gothic', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+          sans-serif;
         font-size: 14px;
-        background-color: #ffffff;
-        color: #212529;
-      }
-      @media (max-width: 575.98px) {
-        body {
-          font-size: 13px;
-        }
-        .navbar .container-fluid {
-          flex-direction: column;
-          align-items: stretch;
-          gap: 10px;
-        }
-        .navbar .btn {
-          width: 100%;
-        }
-        .modal-dialog {
-          margin: 1rem;
-        }
-        .table-responsive .btn,
-        .table-responsive form {
-          width: 100%;
-        }
-        .table-responsive .d-flex {
-          flex-direction: column;
-        }
       }
     </style>
     <script
@@ -70,7 +46,6 @@
             alert('검색 중 오류: ' + data.error);
             return;
           }
-
           if (!Array.isArray(data) || data.length === 0) {
             listEl.innerHTML = '<p>검색 결과가 없습니다.</p>';
             return;
@@ -87,9 +62,9 @@
                     : ''
                 }
                 <div class="flex-grow-1">
-                  <h5 class="card-title">${item.title}</h5>
+                  <h5 class="card-title">${item.title || item.name || ''}</h5>
                   <p class="card-text">${item.pubDate || ''}</p>
-                  <button type="button" class="btn btn-sm btn-primary">선택하기</button>
+                  <button type="button" class="btn btn-sm btn-primary">선택</button>
                 </div>
               </div>
             `;
@@ -123,39 +98,33 @@
               document.getElementById('year').value = item.pubDate || '';
               document.getElementById('type').value = item.mediaType || 'movie';
 
-              // 모달 닫기
               const modalEl = document.getElementById('searchModal');
               const modal = bootstrap.Modal.getInstance(modalEl);
-              if (modal) {
-                modal.hide();
-              }
+              if (modal) modal.hide();
             });
             listEl.appendChild(div);
           });
 
-          // 검색 결과가 있으면 모달 표시
           const modalEl = document.getElementById('searchModal');
           const modal = new bootstrap.Modal(modalEl);
           modal.show();
-        } catch (e) {
-          console.error(e);
-          alert('TMDB 검색 요청 중 오류가 발생했습니다. 콘솔을 확인해 주세요.');
+        } catch (err) {
+          console.error(err);
+          alert('TMDB 검색 요청 중 오류가 발생했습니다.');
         }
       }
 
       window.addEventListener('DOMContentLoaded', () => {
         const input = document.getElementById('searchQuery');
-        if (input) {
-          input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              searchTmdb();
-            }
-          });
-        }
+        if (!input) return;
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            searchTmdb();
+          }
+        });
       });
     </script>
-    <link href="/styles/common.css" rel="stylesheet" />
   </head>
   <body>
     <%- include('partials/siteHeader', { page: 'adminNew', isAdmin: isAdmin }) %>
@@ -189,7 +158,7 @@
               <h5 class="modal-title" id="searchModalLabel">TMDB 검색 결과</h5>
               <button
                 type="button"
-                class="btn-close btn-close-white"
+                class="btn-close"
                 data-bs-dismiss="modal"
                 aria-label="닫기"
               ></button>
@@ -204,6 +173,7 @@
       <hr class="border-secondary" />
 
       <form method="post" action="/admin/content">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
         <h3 class="mb-3">선택한 작품 + 나의 감상</h3>
         <input type="hidden" id="tmdbId" name="tmdbId" />
         <input type="hidden" id="name" name="name" />
@@ -239,7 +209,7 @@
           <textarea name="myNote" class="form-control" rows="4" required></textarea>
         </div>
         <div class="mb-3">
-          <label class="form-label">별점 (0.5 ~ 5)</label>
+          <label class="form-label">평점 (0.5 ~ 5)</label>
           <input
             type="number"
             step="0.5"
@@ -251,12 +221,12 @@
           />
         </div>
         <div class="mb-3">
-          <label class="form-label">태그 (쉼표로 구분)</label>
+          <label class="form-label">태그 (쉼표 구분)</label>
           <input
             type="text"
             name="tags"
             class="form-control"
-            placeholder="예: 스릴러, 가족, 주말에 보기 좋음"
+            placeholder="예) 감동, 가족, 재관람"
           />
         </div>
         <button type="submit" class="btn btn-primary">등록하기</button>
@@ -336,6 +306,7 @@
                       onsubmit="return confirm('이 추천을 삭제할까요?');"
                       class="d-inline"
                     >
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
                       <button type="submit" class="btn btn-sm btn-outline-danger">삭제</button>
                     </form>
                   </div>

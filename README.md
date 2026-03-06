@@ -12,6 +12,7 @@ Required:
 - `ADMIN_PASSWORD`
 - `TMDB_API_KEY`
 - `DATABASE_URL`
+- `COOKIE_SECRET`
 
 Recommended:
 - `NODE_ENV=production`
@@ -20,3 +21,7 @@ Recommended:
 1. `npm install`
 2. `npx prisma migrate dev --name init`
 3. (Optional seed) `node prisma/seed.js`
+
+## E2E Test
+- Default: `npm run test:e2e` (starts local server via Playwright webServer)
+- If local DB is unavailable: set `E2E_BASE_URL` to an already running app URL
