@@ -11,7 +11,7 @@
       data-bs-toggle="modal"
       data-bs-target="#commentSummaryModal"
       data-comment-summary-trigger
-      aria-label="Open comment summary"
+      aria-label="댓글 현황 열기"
       aria-controls="commentSummaryModal"
     >
       <span class="bubble-icon">&#128172;</span>
@@ -26,23 +26,23 @@
     <div class="d-flex header-actions gap-2">
       <% if (page === 'home') { %>
         <% if (isAdmin) { %>
-        <a href="/admin/new" class="btn btn-primary btn-sm">Add Content</a>
+        <a href="/admin/new" class="btn btn-primary btn-sm">콘텐츠 추가</a>
         <% } else { %>
-        <a href="/admin/login" class="btn btn-primary btn-sm">Admin Login</a>
+        <a href="/admin/login" class="btn btn-primary btn-sm">관리자 로그인</a>
         <% } %>
       <% } else if (page === 'adminNew') { %>
-      <a href="/" class="btn btn-outline-secondary btn-sm">Back to List</a>
+      <a href="/" class="btn btn-outline-secondary btn-sm">목록으로 돌아가기</a>
       <% } else if (page === 'adminEdit') { %>
-      <a href="/admin/new" class="btn btn-outline-secondary btn-sm">Add Content</a>
-      <a href="/content/<%= content.id %>" class="btn btn-outline-secondary btn-sm">View Detail</a>
+      <a href="/admin/new" class="btn btn-outline-secondary btn-sm">콘텐츠 추가</a>
+      <a href="/content/<%= content.id %>" class="btn btn-outline-secondary btn-sm">상세 보기</a>
       <% } else if (!isAdmin) { %>
-      <a href="/admin/login" class="btn btn-primary btn-sm">Admin Login</a>
+      <a href="/admin/login" class="btn btn-primary btn-sm">관리자 로그인</a>
       <% } %>
 
       <% if (isAdmin) { %>
       <form method="post" action="/admin/logout" class="d-inline">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
-        <button type="submit" class="btn btn-outline-danger btn-sm">Logout</button>
+        <button type="submit" class="btn btn-outline-danger btn-sm">로그아웃</button>
       </form>
       <% } %>
     </div>
