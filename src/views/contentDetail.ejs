@@ -37,6 +37,9 @@
         padding: 16px;
         background: #f8fbff;
       }
+      .detail-meta-list li + li {
+        margin-top: 6px;
+      }
     </style>
   </head>
   <body>
@@ -89,8 +92,15 @@
           </div>
 
           <p class="text-muted">
-            <%= content.year || content.pubDate || '' %> · <%= content.type || '콘텐츠' %>
+            <%= content.year || content.pubDate || '' %>
+            <% if (content.type) { %>
+            · <%= content.type %>
+            <% } %>
           </p>
+
+          <div class="mb-3">
+            <%- include('partials/ratingStars', { rating: content.myRating, wrapperClass: 'rating-row rating-row-lg', ariaLabel: `내 별점 ${content.myRating}점 / 5점` }) %>
+          </div>
 
           <div class="info-box mb-3">
             <h4>나의 감상</h4>
@@ -104,13 +114,12 @@
           </div>
           <% } %>
 
-          <ul class="list-unstyled">
-            <li><strong>내 평점:</strong> <%= content.myRating %> / 5</li>
+          <ul class="list-unstyled detail-meta-list">
             <% if (content.releaseDate || content.firstAirDate) { %>
             <li><strong>공개일:</strong> <%= content.releaseDate || content.firstAirDate %></li>
             <% } %>
             <% if (typeof content.popularity === 'number') { %>
-            <li><strong>인기도:</strong> <%= content.popularity %></li>
+            <li><strong>인기 지표:</strong> <%= content.popularity %></li>
             <% } %>
             <% if (typeof content.voteAverage === 'number') { %>
             <li><strong>TMDB 평점:</strong> <%= content.voteAverage %></li>
@@ -132,12 +141,14 @@
           </ul>
 
           <% if (content.tags && content.tags.length) { %>
-          <p>
-            태그:
-            <% content.tags.forEach(function (t) { %>
-            <span class="badge bg-info text-dark"><%= t %></span>
-            <% }); %>
-          </p>
+          <div class="mb-3">
+            <strong>태그:</strong>
+            <div class="detail-tag-list mt-2">
+              <% content.tags.forEach(function (tag) { %>
+              <span class="badge bg-info text-dark detail-tag"><%= tag %></span>
+              <% }); %>
+            </div>
+          </div>
           <% } %>
         </div>
       </div>

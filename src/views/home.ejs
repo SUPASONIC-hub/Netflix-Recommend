@@ -36,6 +36,22 @@
         cursor: pointer;
         transition: transform 160ms ease, box-shadow 160ms ease;
       }
+      .content-card .card-body {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .content-card .card-title {
+        margin-bottom: 0;
+      }
+      .note-preview {
+        margin-bottom: 0;
+      }
+      .tag-section {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
       .content-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
@@ -215,11 +231,25 @@
             <% } %>
             <div class="card-body">
               <h5 class="card-title"><%= c.title || c.name || '' %></h5>
-              <p class="card-text">? <%= c.myRating %> / 5</p>
-              <p class="card-text"><%= c.myNote.length > 60 ? c.myNote.slice(0, 60) + '...' : c.myNote %></p>
+              <%- include('partials/ratingStars', { rating: c.myRating }) %>
+              <p class="card-text note-preview"><%= c.myNote.length > 60 ? c.myNote.slice(0, 60) + '...' : c.myNote %></p>
               <% if (c.overview) { %>
               <div class="text-muted small mb-2">
                 <%= c.overview.length > 120 ? c.overview.slice(0, 120) + '...' : c.overview %>
+              </div>
+              <% } %>
+              <% if (Array.isArray(c.tags) && c.tags.length) { %>
+              <div class="tag-section">
+                <div class="tag-list tag-list-collapsible" data-tag-list aria-label="태그">
+                  <% c.tags.forEach(function (tag) { %>
+                  <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis border tag-chip" title="<%= tag %>"><%= tag %></span>
+                  <% }); %>
+                </div>
+                <% if (c.tags.length > 4) { %>
+                <button type="button" class="btn btn-link btn-sm text-decoration-none tag-toggle-btn" data-tag-toggle aria-expanded="false">
+                  태그 더보기
+                </button>
+                <% } %>
               </div>
               <% } %>
               <% if (Array.isArray(c.genreNames) && c.genreNames.length) { %>
@@ -377,6 +407,24 @@
             if (e.key !== 'Enter' && e.key !== ' ') return;
             e.preventDefault();
             window.location.href = href;
+          });
+        });
+      });
+    </script>
+
+    <script>
+      window.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('[data-tag-toggle]').forEach((button) => {
+          button.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const section = button.closest('.tag-section');
+            const list = section ? section.querySelector('[data-tag-list]') : null;
+            if (!list) return;
+
+            const expanded = list.classList.toggle('is-expanded');
+            button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            button.textContent = expanded ? '태그 접기' : '태그 더보기';
           });
         });
       });

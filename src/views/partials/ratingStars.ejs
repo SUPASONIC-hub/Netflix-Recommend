@@ -1,0 +1,12 @@
+<%
+  const numericRating =
+    typeof rating === 'number' ? rating : Number.isFinite(Number(rating)) ? Number(rating) : 0;
+  const safeRating = Math.max(0, Math.min(5, numericRating));
+  const wrapperClassName = typeof wrapperClass === 'string' && wrapperClass ? wrapperClass : 'rating-row';
+  const valueClassName = typeof valueClass === 'string' && valueClass ? valueClass : 'rating-value';
+  const labelText = typeof ariaLabel === 'string' && ariaLabel ? ariaLabel : `내 별점 ${safeRating}점 / 5점`;
+%>
+<div class="<%= wrapperClassName %>" aria-label="<%= labelText %>">
+  <span class="rating-stars" style="--rating: <%= safeRating %>;" aria-hidden="true"></span>
+  <span class="<%= valueClassName %>"><%= safeRating %> / 5</span>
+</div>
