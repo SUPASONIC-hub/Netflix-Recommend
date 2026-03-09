@@ -161,8 +161,11 @@
 }
 
 .tag-list-collapsible {
-  max-height: 56px;
   overflow: hidden;
+}
+
+.tag-list-collapsible.is-collapsed {
+  max-height: var(--collapsed-height, 3.5rem);
 }
 
 .tag-list-collapsible.is-expanded {
@@ -173,6 +176,10 @@
   align-self: flex-start;
   padding: 0;
   font-size: 0.8rem;
+}
+
+.tag-toggle-btn[hidden] {
+  display: none !important;
 }
 
 .detail-tag-list {

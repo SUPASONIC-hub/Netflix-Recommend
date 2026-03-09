@@ -245,11 +245,9 @@
                   <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis border tag-chip" title="<%= tag %>"><%= tag %></span>
                   <% }); %>
                 </div>
-                <% if (c.tags.length > 4) { %>
-                <button type="button" class="btn btn-link btn-sm text-decoration-none tag-toggle-btn" data-tag-toggle aria-expanded="false">
+                <button type="button" class="btn btn-link btn-sm text-decoration-none tag-toggle-btn" data-tag-toggle aria-expanded="false" hidden>
                   태그 더보기
                 </button>
-                <% } %>
               </div>
               <% } %>
               <% if (Array.isArray(c.genreNames) && c.genreNames.length) { %>
@@ -414,6 +412,36 @@
 
     <script>
       window.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.tag-section').forEach((section) => {
+          const list = section.querySelector('[data-tag-list]');
+          const button = section.querySelector('[data-tag-toggle]');
+          if (!list || !button) return;
+
+          const firstTag = list.querySelector('.tag-chip');
+          if (!firstTag) {
+            button.hidden = true;
+            return;
+          }
+
+          const tagStyle = window.getComputedStyle(firstTag);
+          const listStyle = window.getComputedStyle(list);
+          const tagHeight = firstTag.getBoundingClientRect().height || parseFloat(tagStyle.lineHeight) || 24;
+          const rowGap = parseFloat(listStyle.rowGap || listStyle.gap || '0') || 0;
+          const collapsedHeight = (tagHeight * 2) + rowGap;
+
+          list.style.setProperty('--collapsed-height', `${collapsedHeight}px`);
+          list.classList.add('is-collapsed');
+
+          const overflowAmount = list.scrollHeight - collapsedHeight;
+          if (overflowAmount <= 6) {
+            list.classList.remove('is-collapsed');
+            button.hidden = true;
+            return;
+          }
+
+          button.hidden = false;
+        });
+
         document.querySelectorAll('[data-tag-toggle]').forEach((button) => {
           button.addEventListener('click', (event) => {
             event.preventDefault();
@@ -423,6 +451,7 @@
             if (!list) return;
 
             const expanded = list.classList.toggle('is-expanded');
+            list.classList.toggle('is-collapsed', !expanded);
             button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
             button.textContent = expanded ? '태그 접기' : '태그 더보기';
           });
